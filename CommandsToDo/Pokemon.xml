@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Root>
+  <CommandType>Pokemon</CommandType>
+  <Aliases>Pokemon,Pokémon,dex</Aliases>
+  <Help>Search Bulbapedia for information about a Pokemon.</Help>
+  <Examples>@SlateBot Pokemon Bulbasaur</Examples>
+  <Module>Lookup Commands</Module>
+</Root>

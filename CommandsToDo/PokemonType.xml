@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Root>
+  <CommandType>PokemonType</CommandType>
+  <Aliases>type, pokemontype</Aliases>
+  <Help>Query about Pokemon type effectiveness</Help>
+  <Examples>@SlateBot type
+@SlateBot type Bulbasaur
+@SlateBot type fire fairy
+@SlateBot type all</Examples>
+</Root>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Root>
+  <CommandType>YouTube</CommandType>
+  <Aliases>YouTubeRepeat,ytr</Aliases>
+  <Help>Search for a Youtube video and get a link to YouTube on Repeat.</Help>
+  <Module>YouTube Commands</Module>
+  <Examples>@SlateBot ytr Rick Roll</Examples>
+  <ExtraData>
+    <YouTubeType>Repeat</YouTubeType>
+  </ExtraData>
+</Root>

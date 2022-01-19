@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Root>
+  <CommandType>Coin</CommandType>
+  <Aliases>Coin</Aliases>
+  <Help>Flip a coin a given number of times.</Help>
+  <Examples>!coin 2</Examples>
+</Root>

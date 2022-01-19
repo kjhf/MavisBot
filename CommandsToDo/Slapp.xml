@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Root>
+  <CommandType>Slapp</CommandType>
+  <Aliases>slapp,splattag</Aliases>
+  <Help>Look up a query on Slapp.</Help>
+  <Module>Lookup</Module>
+  <Examples>@SlateBot slapp Revitalize</Examples>
+</Root>

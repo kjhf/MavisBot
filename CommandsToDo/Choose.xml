@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Root>
+  <CommandType>Choose</CommandType>
+  <Aliases>Choose,Choisir,Decide,Choisis</Aliases>
+  <Help>Choose an option from all the given options.</Help>
+  <Module>General</Module>
+  <Examples>!choose A B C D\r\n!choose A or B or C</Examples>
+  <ExtraData>
+    <Delimiter> or </Delimiter>
+  </ExtraData>
+</Root>

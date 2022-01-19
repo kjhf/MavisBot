@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Root>
+  <CommandType>Dice</CommandType>
+  <Aliases>dice, roll</Aliases>
+  <Help>Rolls dice</Help>
+  <Examples>@SlateBot roll
+@SlateBot dice 2
+@SlateBot 2d100
+@SlateBot 2DF-1
+@SlateBot roll 4 +5</Examples>
+</Root>

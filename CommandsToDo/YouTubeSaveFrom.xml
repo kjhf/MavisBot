@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Root>
+  <CommandType>YouTube</CommandType>
+  <Aliases>YouTubeSaveFrom,ssyt,savefromyt,ssyoutube,ytd</Aliases>
+  <Help>Search for a Youtube video and get a link to SaveFrom.</Help>
+  <Module>YouTube Commands</Module>
+  <Examples>@SlateBot ssyt Rick Roll</Examples>
+  <ExtraData>
+    <YouTubeType>SaveFrom</YouTubeType>
+  </ExtraData>
+</Root>

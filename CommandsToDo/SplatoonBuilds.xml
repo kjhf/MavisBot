@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Root>
+  <CommandType>SplatBuilds</CommandType>
+  <Aliases>splatbuild, splatbuilds, build, builds, sendou</Aliases>
+  <Help>Fetch splat builds from Sendou.ink</Help>
+  <Module>Lookup</Module>
+  <Examples>!builds splat roller</Examples>
+</Root>

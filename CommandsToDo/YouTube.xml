@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Root>
+  <CommandType>YouTube</CommandType>
+  <Aliases>YouTube,yt</Aliases>
+  <Help>Search for a Youtube video.</Help>
+  <Module>YouTube Commands</Module>
+  <Examples>@SlateBot yt Rick Roll</Examples>
+  <ExtraData>
+    <YouTubeType>YouTube</YouTubeType>
+  </ExtraData>
+</Root>
