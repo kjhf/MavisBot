@@ -846,7 +846,7 @@ namespace Mavis.Commands
       subCommands = toAdd.ToDictionary(pair => pair.subCommand.Name, pair => pair);
     }
 
-    public string CommandTypeName => "Replace";
+    public string CommandTypeName => "replace";
     public IList<string> Names => subCommands.Keys.ToArray();
 
     public IList<ApplicationCommandProperties> BuildCommands()

@@ -278,14 +278,65 @@ namespace Mavis.Utils
     }
 
     /// <summary>
+    /// Make a string kebab-case
+    /// </summary>
+    public static string ToKebabCase(this string str)
+    {
+      if (string.IsNullOrEmpty(str)) return str;
+      if (str.Length < 2) return str.ToLowerInvariant();
+
+      var sb = new StringBuilder();
+      sb.Append(char.ToLowerInvariant(str[0]));
+      for (int i = 1; i < str.Length; i++)
+      {
+        // If capital, prepend a hyphen.
+        if (char.IsUpper(str[i]))
+        {
+          sb.Append('-');
+        }
+
+        // If space, replace with a hyphen, otherwise add the character (lower-case).
+        if (char.IsWhiteSpace(str[i]))
+        {
+          sb.Append('-');
+        }
+        else
+        {
+          sb.Append(char.ToLowerInvariant(str[i]));
+        }
+      }
+      return sb.ToString().Trim();
+    }
+
+    /// <summary>
     /// Make a string MACRO_CASE
     /// </summary>
-    /// <param name="str">Object string</param>
     public static string ToMacroCase(this string str)
     {
-      str = str.Replace(" ", "_");
-      str = str.ToUpperInvariant();
-      return str;
+      if (string.IsNullOrEmpty(str)) return str;
+      if (str.Length < 2) return str.ToUpperInvariant();
+
+      var sb = new StringBuilder();
+      sb.Append(char.ToUpperInvariant(str[0]));
+      for (int i = 1; i < str.Length; i++)
+      {
+        // If capital, prepend an underscore.
+        if (char.IsUpper(str[i]))
+        {
+          sb.Append('_');
+        }
+
+        // If space, replace with an underscore, otherwise add the character (upper-case).
+        if (char.IsWhiteSpace(str[i]))
+        {
+          sb.Append('_');
+        }
+        else
+        {
+          sb.Append(char.ToUpperInvariant(str[i]));
+        }
+      }
+      return sb.ToString().Trim();
     }
 
     /// <summary>
@@ -316,6 +367,40 @@ namespace Mavis.Utils
       return sb.ToString();
     }
 
+    /// <summary>
+    /// Make a string snake_case
+    /// </summary>
+    public static string ToSnakeCase(this string str)
+    {
+      if (string.IsNullOrEmpty(str)) return str;
+      if (str.Length < 2) return str.ToLowerInvariant();
+
+      var sb = new StringBuilder();
+      sb.Append(char.ToLowerInvariant(str[0]));
+      for (int i = 1; i < str.Length; i++)
+      {
+        // If capital, prepend a hyphen.
+        if (char.IsUpper(str[i]))
+        {
+          sb.Append('_');
+        }
+
+        // If space, replace with a hyphen, otherwise add the character (lower-case).
+        if (char.IsWhiteSpace(str[i]))
+        {
+          sb.Append('_');
+        }
+        else
+        {
+          sb.Append(char.ToLowerInvariant(str[i]));
+        }
+      }
+      return sb.ToString().Trim();
+    }
+
+    /// <summary>
+    /// Make A String Title Case
+    /// </summary>
     public static string ToTitleCase(this string str)
     {
       if (string.IsNullOrEmpty(str)) return str;
@@ -502,7 +587,7 @@ namespace Mavis.Utils
     /// <param name="maximumLength">The maximum length of the string (inclusive)</param>
     /// <param name="truncationIndicator">String to append if truncation has occurred, e.g. ... or …</param>
     /// <returns></returns>
-    public static string Truncate(this string value, int maximumLength, string truncationIndicator = "")
+    public static string Truncate(this string value, int maximumLength, string truncationIndicator = "…")
     {
       if (value == null)
       {

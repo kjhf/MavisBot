@@ -1,10 +1,13 @@
 ﻿using Discord;
+using Discord.Net;
 using Discord.WebSocket;
 using Mavis.Commands;
 using Mavis.Utils;
+using Newtonsoft.Json;
 using NLog;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -17,6 +20,7 @@ namespace Mavis.Controllers
     private readonly DiscordSocketClient _client;
     private readonly IMavisCommand[] _commands;
     private readonly IMavisMultipleCommand[] _multiCommands;
+    private ApplicationCommandProperties[]? _builtCommands;
 
     public MavisSlashCommandHandler(DiscordSocketClient _client)
     {
@@ -148,7 +152,6 @@ namespace Mavis.Controllers
     internal async Task InitSlashCommands()
     {
       _client.SlashCommandExecuted += Client_SlashCommandExecuted;
-      _client.JoinedGuild += Client_JoinedGuild;
 
       if (this._client.Guilds.Count == 0)
       {
@@ -160,11 +163,28 @@ namespace Mavis.Controllers
         log.Error($"No {nameof(IMavisCommand)}s have been loaded to initialise the slash commands.");
       }
 
+      try
+      {
+        _builtCommands = FinaliseCommands();
+      }
+      catch (Exception exception)
+      {
+        log.Fatal(exception, $"Failed to create/finalise the slash commands: {exception.Message}");
+        log.Info(exception);
+        return;
+      }
+
       foreach (var guild in this._client.Guilds)
       {
         try
         {
-          await guild.BulkOverwriteApplicationCommandAsync(FinaliseCommands()).ConfigureAwait(false);
+          await guild.BulkOverwriteApplicationCommandAsync(_builtCommands).ConfigureAwait(false);
+        }
+        catch (HttpException exception)
+        {
+          log.Error(exception, $"Http Exception with server {guild.Id} in creating the slash commands: {exception.Message} ({exception.DiscordCode})");
+          log.Info(exception);
+          log.Info(JsonConvert.SerializeObject(exception.Errors, Formatting.Indented));
         }
         catch (Exception exception)
         {
@@ -172,13 +192,16 @@ namespace Mavis.Controllers
           log.Info(exception);
         }
       }
+
+      _client.JoinedGuild += Client_JoinedGuild;
     }
 
     private async Task Client_JoinedGuild(SocketGuild guild)
     {
       try
       {
-        await guild.BulkOverwriteApplicationCommandAsync(FinaliseCommands()).ConfigureAwait(false);
+        Debug.Assert(_builtCommands != null, "Client_JoinedGuild handler fired before FinaliseCommands finished.");
+        await guild.BulkOverwriteApplicationCommandAsync(_builtCommands).ConfigureAwait(false);
       }
       catch (Exception exception)
       {

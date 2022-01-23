@@ -32,7 +32,7 @@ namespace Mavis.Commands
     private static readonly Random rand = new();
     private readonly Dictionary<string, ResponseListSubCommand> subCommands = new();
 
-    public string CommandTypeName => "ResponseList";
+    public string CommandTypeName => "response-list";
     public IList<string> Names => subCommands.Keys.ToArray();
 
     public ResponseListCommand()

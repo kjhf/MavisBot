@@ -30,7 +30,7 @@ namespace Mavis.Commands
     private static readonly Random rand = new();
     private readonly Dictionary<string, ResponseSubCommand> subCommands = new();
 
-    public string CommandTypeName => "Responses";
+    public string CommandTypeName => "responses";
     public IList<string> Names => subCommands.Keys.ToArray();
 
     public ResponsesCommand()
@@ -151,7 +151,8 @@ namespace Mavis.Commands
         new ResponseSubCommand(subCommand: new SlashCommandBuilder().WithName("lenny").WithDescription("Post your lenny face"),
            isPrivate: false, responses: new[] { "( ͡° ͜ʖ ͡°)", "( ﾟ ͜ʖ ﾟ)", "( ͡º ͜ʖ͡º)" }),
         new ResponseSubCommand(subCommand: new SlashCommandBuilder().WithName("woomy").WithDescription("Woomy!"),
-           isPrivate: false, responses: new[] { "Woomy! くコ:彡", "くコ:彡 ~~", "WOOMY! > 🦑 🐙 < NGYES!", "MAMENMI! > 🦑 🐙 < SQWAYY!", "Ngyes! くコ:彡", "~~ 彡:C> Woomy!", "~~ 彡:C> Ngyes!", }) };
+           isPrivate: false, responses: new[] { "Woomy! くコ:彡", "くコ:彡 ~~", "WOOMY! > 🦑 🐙 < NGYES!", "MAMENMI! > 🦑 🐙 < SQWAYY!", "Ngyes! くコ:彡", "~~ 彡:C> Woomy!", "~~ 彡:C> Ngyes!", })
+      };
 
       subCommands = toAdd.ToDictionary(pair => pair.subCommand.Name, pair => pair);
     }

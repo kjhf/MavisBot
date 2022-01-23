@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace Mavis.Utils
 {
@@ -57,6 +59,31 @@ namespace Mavis.Utils
     public static long NextLong(this Random random)
     {
       return random.NextLong(long.MinValue, long.MaxValue);
+    }
+
+    public static T? Choice<T>(this Random random, IReadOnlyList<T> choices)
+      => (choices == null || choices.Count == 0) ? default : choices[random.Next(choices.Count)];
+
+    public static T? Choice<T>(this Random random, IEnumerable<T> choices, IEnumerable<int> weights)
+    {
+      var cumulativeWeight = new List<int>();
+      int last = 0;
+      foreach (var cur in weights)
+      {
+        last += cur;
+        cumulativeWeight.Add(last);
+      }
+      int choice = random.Next(last);
+      int i = 0;
+      foreach (var cur in choices)
+      {
+        if (choice < cumulativeWeight[i])
+        {
+          return cur;
+        }
+        i++;
+      }
+      return default;
     }
   }
 }
