@@ -18,7 +18,7 @@ namespace Mavis.Controllers
 #if DEBUG
       const LogSeverity logLevel = LogSeverity.Info;
 #else
-      const LogSeverity logLevel = LogSeverity.Warning,
+      const LogSeverity logLevel = LogSeverity.Warning;
 #endif // DEBUG
 
       _client = new DiscordSocketClient(new DiscordSocketConfig

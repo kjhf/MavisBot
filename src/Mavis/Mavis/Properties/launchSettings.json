@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Mavis": {
+      "commandName": "Project"
+    },
+    "Docker": {
+      "commandName": "Docker"
+    }
+  }
+}

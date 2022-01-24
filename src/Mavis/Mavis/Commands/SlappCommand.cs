@@ -40,7 +40,7 @@ namespace Mavis.Commands
       Task.Run(() =>
       {
         log.Trace("Making SplatTagController");
-        (SlappCommand.splatTagController, _) = SplatTagControllerFactory.CreateController();
+        (SlappCommand.splatTagController, _) = SplatTagControllerFactory.CreateController(saveFolder: Environment.GetEnvironmentVariable("SLAPP_DATA_FOLDER"));
         log.Trace("Created SplatTagController");
       });
 
