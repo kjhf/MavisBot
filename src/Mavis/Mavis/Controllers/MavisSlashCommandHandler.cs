@@ -213,7 +213,11 @@ namespace Mavis.Controllers
     private ApplicationCommandProperties[] FinaliseCommands()
     {
       return
-        this._commands.Select(c => c.BuildCommand(client: _client))
+        this._commands.Select(c =>
+        {
+          log.Trace($"Building {c.Name} Command");
+          return c.BuildCommand(client: _client);
+        })
         .Concat(this._multiCommands.SelectMany(c => c.BuildCommands()))
         .ToArray();
     }

@@ -12,6 +12,7 @@ namespace Mavis.Controllers
     private static readonly Logger log = LogManager.GetCurrentClassLogger();
     private readonly DiscordSocketClient _client;
     private readonly MavisSlashCommandHandler _slashCommandHandler;
+    private ITextChannel? logChannel;
 
     public MavisBotController()
     {
@@ -48,11 +49,29 @@ namespace Mavis.Controllers
       await Task.Delay(Timeout.Infinite);
     }
 
-    private Task Client_Ready()
+    private async Task Client_Ready()
     {
-      log.Debug($"...ready as {this._client.CurrentUser.Username} ({this._client.CurrentUser.Id}).");
-      Task.Run(async () => await InitCommands().ConfigureAwait(false));
-      return Task.CompletedTask;
+      log.Debug($"...beginning ready handler as {this._client.CurrentUser.Username} ({this._client.CurrentUser.Id}).");
+      string? logChannelStr = Environment.GetEnvironmentVariable("LOGS_CHANNEL");
+      if (logChannelStr != null)
+      {
+        if (ulong.TryParse(logChannelStr, out ulong logChannelULong))
+        {
+          logChannel = (ITextChannel)await this._client.GetChannelAsync(logChannelULong);
+          log.Info($"✔ Log channel set to {logChannelStr}");
+        }
+        else
+        {
+          log.Error($"Log channel was found in the env variable LOGS_CHANNEL but is not an id: {logChannelStr}");
+        }
+      }
+      else
+      {
+        log.Warn("Log channel was not found in the env variable LOGS_CHANNEL.");
+      }
+
+      _ = Task.Run(async () => await InitCommands().ConfigureAwait(false));
+      log.Debug($"...exiting ready handler as {this._client.CurrentUser.Username} ({this._client.CurrentUser.Id}).");
     }
 
     private async Task InitCommands()
@@ -72,7 +91,16 @@ namespace Mavis.Controllers
         LogSeverity.Warning => LogLevel.Warn,
         _ => LogLevel.Error,
       };
-      log.Log(level, msg.Exception, msg.Source + ": " + msg.Message);
+      string message = $"[{Environment.MachineName}] {msg.Source}: {msg.Message}";
+      log.Log(level, msg.Exception, message);
+
+      if (level >= LogLevel.Info && this.logChannel != null)
+      {
+        Task.Run(async () =>
+        {
+          await logChannel.SendMessageAsync(message);
+        });
+      }
       return Task.CompletedTask;
     }
   }

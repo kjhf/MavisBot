@@ -63,6 +63,22 @@ namespace Mavis.Utils
       return s.Replace(" ", "").Replace("_", "").Replace("-", "").Equals(other.Replace(" ", "").Replace("_", "").Replace("-", "").Replace(".", ""), StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// Escape characters in a string with the specified escape character(s).
+    /// </summary>
+    /// <param name="s">The string to escape</param>
+    /// <param name="charactersToEscape">The characters that must be escaped</param>
+    /// <param name="charactersToPrepend">The character to use for an escape</param>
+    /// <returns>The escaped string</returns>
+    public static string EscapeCharacters(this string s, string charactersToEscape = "\\", string charactersToPrepend = "\\")
+    {
+      foreach (var c in charactersToEscape)
+      {
+        s = s.Replace(c.ToString(), $"{charactersToPrepend}{c}");
+      }
+      return s;
+    }
+
     public static char FlipCharacter(this char c)
     {
       switch (c)

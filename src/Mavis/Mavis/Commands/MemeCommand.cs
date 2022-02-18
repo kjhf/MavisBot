@@ -121,19 +121,31 @@ namespace Mavis.Commands
         log.Trace("Loading memes...");
         if (_client is not null)
         {
-          if (_client.GetChannel(ulong.Parse(Environment.GetEnvironmentVariable("MEME_TEMPLATE_CHANNEL") ?? "0")) is not ISocketMessageChannel templateChannel)
+          ITextChannel? memeChannel = null;
+          string? memeChannelStr = Environment.GetEnvironmentVariable("MEME_TEMPLATE_CHANNEL");
+
+          if (memeChannelStr != null)
           {
-            log.Error("Could not get the template channel from the id: " + Environment.GetEnvironmentVariable("MEME_TEMPLATE_CHANNEL"));
+            if (ulong.TryParse(memeChannelStr, out ulong memeChannelULong))
+            {
+              memeChannel = (ITextChannel)await this._client.GetChannelAsync(memeChannelULong);
+              log.Debug($"✔ Meme channel found: {memeChannelStr}");
+              log.Trace("Downloading memes from template channel...");
+              var messages = (await memeChannel.GetMessagesAsync().FlattenAsync().ConfigureAwait(false)).ToArray();
+              log.Trace("... " + messages.Length + " memes to load.");
+              foreach (var message in messages)
+              {
+                await LoadMeme(message).ConfigureAwait(false);
+              }
+            }
+            else
+            {
+              log.Error($"Meme channel was found in the env variable MEME_TEMPLATE_CHANNEL but is not an id: {memeChannelStr}");
+            }
           }
           else
           {
-            log.Trace("Downloading memes from template channel...");
-            var messages = (await templateChannel.GetMessagesAsync().FlattenAsync().ConfigureAwait(false)).ToArray();
-            log.Trace("... " + messages.Length + " memes to load.");
-            foreach (var message in messages)
-            {
-              await LoadMeme(message).ConfigureAwait(false);
-            }
+            log.Warn("Meme channel was not found in the env variable MEME_TEMPLATE_CHANNEL.");
           }
         }
         log.Trace("...Finished loading memes.");
