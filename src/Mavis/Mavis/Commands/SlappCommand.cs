@@ -37,6 +37,9 @@ namespace Mavis.Commands
           var (splatTagController, _) = SplatTagControllerFactory.CreateController(saveFolder: slappFolder);
           slappCommandHandler = new SlappCommandHandler(splatTagController);
           log.Trace("Created SplatTagController");
+
+          // Register a reactions handler.
+          client.ReactionAdded += Client_ReactionAdded;
         }
         catch (Exception ex)
         {
@@ -89,7 +92,23 @@ namespace Mavis.Commands
         }
         builder.AddOption(optionBuilder);
       }
+
       return builder.Build();
+    }
+
+    private async Task Client_ReactionAdded(Cacheable<IUserMessage, ulong> messageContext, Cacheable<IMessageChannel, ulong> channelContext, SocketReaction reaction)
+    {
+      if (slappCommandHandler == null)
+      {
+        log.Error("Slapp ReactionAdded invoked when the Controller has not been created yet.");
+      }
+      else
+      {
+        if ((messageContext.HasValue && !messageContext.Value.Author.IsBot) || (reaction.User.IsSpecified && !reaction.User.Value.IsBot))
+        {
+          await slappCommandHandler.HandleReaction(messageContext, channelContext, reaction);
+        }
+      }
     }
 
     public async Task Execute(DiscordSocketClient client, SocketSlashCommand command)

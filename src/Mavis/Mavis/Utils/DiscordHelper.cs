@@ -1,4 +1,5 @@
-﻿using SplatTagCore;
+﻿using Discord;
+using SplatTagCore;
 using System;
 using System.Collections.Generic;
 
@@ -74,7 +75,7 @@ namespace Mavis.Utils
       string text;
       if (source.Start != Builtins.UnknownDateTime)
       {
-        text = source.Start.ToString("MMM-yyyy");
+        text = source.Start.ToString("MMM yyyy");
       }
       else
       {
@@ -92,6 +93,19 @@ namespace Mavis.Utils
       var link = source.BattlefyUri;
       string text = source.StrippedTournamentName;
       return string.IsNullOrEmpty(link) ? text : $"[{text}]({link})";
+    }
+
+    public static IEmote? ToEmote(this string react)
+    {
+      if (string.IsNullOrWhiteSpace(react)) return null;
+      if (react.StartsWith("<a:") || react.StartsWith("<:"))
+      {
+        return Emote.Parse(react);
+      }
+      else
+      {
+        return new Emoji(react);
+      }
     }
   }
 }

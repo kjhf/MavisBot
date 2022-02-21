@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -625,5 +627,35 @@ namespace Mavis.Utils
       // Substring up to the maximum length and add on the truncation indicator.
       return value.Substring(0, maximumLength - truncationIndicator.Length) + truncationIndicator;
     }
+
+    /// <summary>
+    /// Returns a default string if the prior string is null or empty.
+    /// </summary>
+    [return: NotNullIfNotNull("@default")]
+    [return: NotNullIfNotNull("str")]
+    public static string? Or(this string? str, string @default) => ConditionalString(str, @default: @default);
+
+    /// <summary>
+    /// Returns the instance string that is prefixed with <paramref name="prefix"/> and suffixed with <paramref name="suffix"/>, if the instance string is not null or empty.
+    /// Otherwise, returns <paramref name="default"/>.
+    /// </summary>
+    [return: NotNullIfNotNull("@default")]
+    [return: NotNullIfNotNull("str")]
+    public static string? ConditionalString(this string? str, string prefix = "", string suffix = "", string? @default = "")
+    {
+      return string.IsNullOrEmpty(str) ? @default : prefix + str + suffix;
+    }
+
+    /// <summary>
+    /// Append a plural suffix to a string if the <paramref name="collection"/>'s length is not 1.
+    /// </summary>
+    public static string Plural(this string str, ICollection collection, string suffix = "s")
+      => Plural(str, collection.Count, suffix);
+
+    /// <summary>
+    /// Append a plural suffix to a string if the <paramref name="count"/> is not 1.
+    /// </summary>
+    public static string Plural(this string str, int count, string suffix = "s")
+      => count == 1 ? str : str + suffix;
   }
 }
