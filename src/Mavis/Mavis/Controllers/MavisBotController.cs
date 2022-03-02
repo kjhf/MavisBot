@@ -1,7 +1,9 @@
 ﻿using Discord;
 using Discord.WebSocket;
+using Mavis.Utils;
 using NLog;
 using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -52,6 +54,7 @@ namespace Mavis.Controllers
     private async Task Client_Ready()
     {
       log.Debug($"...beginning ready handler as {this._client.CurrentUser.Username} ({this._client.CurrentUser.Id}).");
+      await this._client.SetStatusAsync(UserStatus.Idle);  // We set online again when Slapp has finished booting.
       string? logChannelStr = Environment.GetEnvironmentVariable("LOGS_CHANNEL");
       if (logChannelStr != null)
       {
@@ -70,7 +73,26 @@ namespace Mavis.Controllers
         log.Warn("Log channel was not found in the env variable LOGS_CHANNEL.");
       }
 
-      _ = Task.Run(async () => await InitCommands().ConfigureAwait(false));
+#if DEBUG
+      string presence = "--=IN DEV=--";
+#else
+      string presence = "in the cloud ⛅";
+#endif
+
+      if (Debugger.IsAttached)
+      {
+        presence += " (Debugger Attached)";
+      }
+
+      _ = Task.Run(async () =>
+      {
+        // Set the bot's presence based on the running mode
+        await this._client.SetGameAsync(presence).ConfigureAwait(false);
+
+        // Asynchronously initialize the commands
+        await InitCommands().ConfigureAwait(false);
+      });
+
       log.Debug($"...exiting ready handler as {this._client.CurrentUser.Username} ({this._client.CurrentUser.Id}).");
     }
 
@@ -96,10 +118,7 @@ namespace Mavis.Controllers
 
       if (level >= LogLevel.Info && this.logChannel != null)
       {
-        Task.Run(async () =>
-        {
-          await logChannel.SendMessageAsync(message);
-        });
+        Task.Run(async () => await logChannel.SendMessagesUnrolled(message));
       }
       return Task.CompletedTask;
     }

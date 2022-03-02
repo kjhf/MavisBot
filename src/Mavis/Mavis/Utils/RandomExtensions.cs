@@ -61,8 +61,12 @@ namespace Mavis.Utils
       return random.NextLong(long.MinValue, long.MaxValue);
     }
 
-    public static T? Choice<T>(this Random random, IReadOnlyList<T> choices)
-      => (choices == null || choices.Count == 0) ? default : choices[random.Next(choices.Count)];
+    public static T Choice<T>(this Random random, IReadOnlyList<T> choices)
+    {
+      return choices == null || choices.Count == 0
+          ? throw new ArgumentNullException(nameof(choices), "Choices cannot be null or empty.")
+          : choices[random.Next(choices.Count)];
+    }
 
     public static T? Choice<T>(this Random random, IEnumerable<T> choices, IEnumerable<int> weights)
     {

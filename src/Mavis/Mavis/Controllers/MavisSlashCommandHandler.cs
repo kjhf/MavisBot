@@ -192,7 +192,7 @@ namespace Mavis.Controllers
           log.Info(exception);
         }
       }
-
+      //await _client.BulkOverwriteGlobalApplicationCommandsAsync(_builtCommands).ConfigureAwait(false);
       _client.JoinedGuild += Client_JoinedGuild;
     }
 

@@ -50,14 +50,14 @@ namespace Mavis.Commands
         ConsoleColor nearestConsoleColor = color.ToConsoleColor();
         KnownColor nearestKnownColor = color.ToNearestKnownColor();
         message = (nearestKnownColor.ToString().Equals(nearestConsoleColor.ToString())) ? $"✓ It's {nearestKnownColor.ToString().ToTitleCase()}" : $"(~) It's near to {nearestKnownColor.ToString().ToTitleCase()}";
-        await command.RespondAsync(text: message, embed: EmbedUtility.ToEmbed(message, discordColor).Build(), ephemeral: false).ConfigureAwait(false);
+        await command.RespondAsync(text: message, embed: new MavisEmbedBuilder(message, discordColor).BuildFirst(), ephemeral: false).ConfigureAwait(false);
       }
       else if (Enum.TryParse(input, true, out KnownColor knownColor))
       {
         var color = DrawingColor.FromKnownColor(knownColor);
         discordColor = new DiscordColor(color.R, color.G, color.B);
         message = $"✓ {knownColor}";
-        await command.RespondAsync(text: message, embed: EmbedUtility.ToEmbed(message, discordColor).Build(), ephemeral: false).ConfigureAwait(false);
+        await command.RespondAsync(text: message, embed: new MavisEmbedBuilder(message, discordColor).BuildFirst(), ephemeral: false).ConfigureAwait(false);
       }
       else
       {

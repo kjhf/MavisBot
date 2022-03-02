@@ -2,11 +2,41 @@
 using SplatTagCore;
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Mavis.Utils
 {
   public static class DiscordHelper
   {
+    /// <summary>
+    /// Get the string would/did trigger this slash command.
+    /// </summary>
+    /// <param name="interaction"></param>
+    public static string AsCommandString(this ISlashCommandInteraction interaction)
+    => $"/{interaction.Data.Name} {string.Join(" ", interaction.Data.Options.Select(option => $"{option.Name}:{option.Value}"))}";
+
+    /// <summary>
+    /// Sends message(s) to this message channel. If the message exceeds the character limit, a new message is started.
+    /// </summary>
+    /// <param name="channel"></param>
+    /// <param name="text">The message to be sent.</param>
+    /// <param name="isTTS">Determines whether the message should be read aloud by Discord or not.</param>
+    /// <returns>A task that represents an asynchronous send operation for delivering the message. The task result contains the sent message.</returns>
+    public static Task<IUserMessage[]> SendMessagesUnrolled(this IMessageChannel channel, string text, bool isTTS = false)
+    {
+      return Task.Run(async () =>
+      {
+        var messages = new List<IUserMessage>();
+        while (text.Length > DiscordLimits.MESSAGE_TEXT_LIMIT)
+        {
+          text = text.Substring(0, DiscordLimits.MESSAGE_TEXT_LIMIT);
+          messages.Add(await channel.SendMessageAsync(text, isTTS));
+        }
+        return messages.ToArray();
+      });
+    }
+
     /// <summary>
     /// Wrap the string in backticks.
     /// If the string contains an `, it is wrapped in ```.
@@ -24,13 +54,16 @@ namespace Mavis.Utils
     /// </summary>
     public static string SafeBackticks(this string str)
     {
-      if (str.Contains('`'))
+      if (str.Length > 0)
       {
-        return $"```{str}```";
-      }
-      else if (str.Contains('_') || str.Contains('*') || str.StartsWith(' ') || str.EndsWith(' '))
-      {
-        return $"`{str}`";
+        if (str.Contains('`'))
+        {
+          return $"```{str}```";
+        }
+        else if (str.Contains('_') || str.Contains('*') || str[0] == ' ' || str[^1] == ' ')
+        {
+          return $"`{str}`";
+        }
       }
       return str;
     }
@@ -95,17 +128,13 @@ namespace Mavis.Utils
       return string.IsNullOrEmpty(link) ? text : $"[{text}]({link})";
     }
 
-    public static IEmote? ToEmote(this string react)
+    public static IEmote ToEmote(this string react)
     {
-      if (string.IsNullOrWhiteSpace(react)) return null;
-      if (react.StartsWith("<a:") || react.StartsWith("<:"))
-      {
-        return Emote.Parse(react);
-      }
-      else
-      {
-        return new Emoji(react);
-      }
+      return string.IsNullOrWhiteSpace(react)
+          ? throw new ArgumentNullException(nameof(react), "react cannot be null or whitespace.")
+          : (react.StartsWith("<a:") || react.StartsWith("<:"))
+          ? Emote.Parse(react)
+          : new Emoji(react);
     }
   }
 }

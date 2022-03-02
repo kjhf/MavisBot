@@ -633,7 +633,8 @@ namespace Mavis.Utils
     /// </summary>
     [return: NotNullIfNotNull("@default")]
     [return: NotNullIfNotNull("str")]
-    public static string? Or(this string? str, string @default) => ConditionalString(str, @default: @default);
+    public static string? Or(this string? str, string @default)
+      => string.IsNullOrEmpty(str) ? @default : str;
 
     /// <summary>
     /// Returns the instance string that is prefixed with <paramref name="prefix"/> and suffixed with <paramref name="suffix"/>, if the instance string is not null or empty.
@@ -642,14 +643,12 @@ namespace Mavis.Utils
     [return: NotNullIfNotNull("@default")]
     [return: NotNullIfNotNull("str")]
     public static string? ConditionalString(this string? str, string prefix = "", string suffix = "", string? @default = "")
-    {
-      return string.IsNullOrEmpty(str) ? @default : prefix + str + suffix;
-    }
+      => string.IsNullOrEmpty(str) ? @default : prefix + str + suffix;
 
     /// <summary>
     /// Append a plural suffix to a string if the <paramref name="collection"/>'s length is not 1.
     /// </summary>
-    public static string Plural(this string str, ICollection collection, string suffix = "s")
+    public static string Plural<T>(this string str, ICollection<T> collection, string suffix = "s")
       => Plural(str, collection.Count, suffix);
 
     /// <summary>

@@ -188,7 +188,7 @@ namespace Mavis.SlappSupport
       return Array.Find(weaponsTransformed, w => w.Equals(query));
     }
 
-    public static string? GetRandomWeapon()
+    public static string GetRandomWeapon()
     {
       return random.Choice(Weapons);
     }

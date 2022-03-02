@@ -74,7 +74,7 @@ namespace Mavis.SlappSupport
 
     private static readonly Logger log = LogManager.GetCurrentClassLogger();
     private readonly SplatTagController splatTagController;
-    private readonly Dictionary<ulong, IDictionary<string, IReadonlySourceable>> slappReactsQueue = new();
+    private readonly Dictionary<ulong, IDictionary<IEmote, IReadonlySourceable>> slappReactsQueue = new();
 
     public SlappCommandHandler(SplatTagController splatTagController)
     {
@@ -85,12 +85,12 @@ namespace Mavis.SlappSupport
     {
       if (splatTagController == null)
       {
-        await command.RespondAsync(text: "⌛ Slapp not initialised yet.", ephemeral: true).ConfigureAwait(false);
+        await command.ModifyOriginalResponseAsync((message) => message.Content = "⌛ Slapp not initialised yet.").ConfigureAwait(false);
         return;
       }
 
       Dictionary<string, object> commandParams = command.Data.Options.ToDictionary(kv => kv.Name, kv => kv.Value);
-      log.Trace($"Processing Slapp Command with params: {string.Join(", ", commandParams.Select(kv => kv.Key + "=" + kv.Value))} ");
+      log.Info($"Processing Slapp Command {command.AsCommandString()}");
 
       SplatTagController.Verbose = commandParams.GetWithConversion("--verbose", false);
       string query = commandParams.GetWithConversion("query", "");
@@ -139,39 +139,38 @@ namespace Mavis.SlappSupport
 
       log.Trace($"Building result for {query}.");
 
-      await command.RespondAsync(text: "<a:typing:897094396502224916> Just a sec!", ephemeral: true);
+      var originalMessage = await command.ModifyOriginalResponseAsync((message) => message.Content = $"{PleaseWaitMessages.GetRandomMessage()} {(splatTagController.CachingDone ? "🏃‍" : "(Caching not yet done, will take a little longer 🐢!)")}");
+
       _ = Task.Run(async () =>
       {
         try
         {
-          var (embed, colour, reacts) = await ProcessSlappCommand(query, options);
+          // Process the command
+          var (builder, reacts) = await ProcessSlappCommand(query, options);
 
-          if (embed == null)
+          // Build the split responses from the builder
+          Discord.Rest.RestFollowupMessage? lastMessageSent = null;
+          foreach (var embed in builder.SmartBuild())
           {
-            await command.FollowupAsync(
-              text: "Something went wrong processing the result from Slapp: no embed was made. 😔",
+            // Send the responses
+            lastMessageSent = await command.FollowupAsync(
+              text: command.AsCommandString(),
+              embed: embed,
               ephemeral: false)
-              .ConfigureAwait(false);
-            return;
+            .ConfigureAwait(false);
           }
 
-          // Might need to do some truncation and moving fields to another message here.
-
           // Now we're at the end, react to the last message (and only do so if we've sent a message)
-          var lastMessageSent = await command.FollowupAsync(
-            embed: embed.WithColor(colour).Build(),
-            ephemeral: false)
-          .ConfigureAwait(false);
-
-          await lastMessageSent.AddReactionsAsync(reacts.Select(r => r.Key.ToEmote()).ToArray());
-          // And record into the buffer
-          AddToReactsBuffer(lastMessageSent.Id, reacts);
+          if (lastMessageSent != null)
+          {
+            AddReactionsToMessage(lastMessageSent, reacts);
+          }
         }
         catch (Exception ex)
         {
           string errorMessage = "Something went wrong processing the result from Slapp. Blame Slate. 😒🤔" + ex.Message;
           await command.FollowupAsync(
-           embed: EmbedUtility.ToEmbed(errorMessage, Color.Red).Build(),
+           embed: new MavisEmbedBuilder(errorMessage, Color.Red).BuildFirst(),
            ephemeral: false)
           .ConfigureAwait(false);
           log.Error(ex, $"<@!97288493029416960> {ex}"); // @Slate in logging channel
@@ -180,7 +179,8 @@ namespace Mavis.SlappSupport
 
         try
         {
-          await command.DeleteOriginalResponseAsync().ConfigureAwait(false);
+          // Delete the loading message
+          await originalMessage.DeleteAsync();
         }
         catch (Exception ex)
         {
@@ -192,39 +192,105 @@ namespace Mavis.SlappSupport
       }).ConfigureAwait(false);
     }
 
-    internal async Task HandleReaction(Cacheable<IUserMessage, ulong> messageContext, Cacheable<IMessageChannel, ulong> channelContext, SocketReaction reaction)
+    internal async Task HandleReaction(IUserMessage messageContext, Cacheable<IMessageChannel, ulong> channelContext, SocketReaction reaction)
     {
-      var channel = channelContext.Value;
-      var message = this.slappReactsQueue.GetValueOrDefault(messageContext.Id);
+      var messageReactions = this.slappReactsQueue.GetValueOrDefault(messageContext.Id);
       bool handled = false;
-      if (message?.TryGetValue(reaction.Emote.Name, out var response) == true)
+      if (messageReactions?.TryGetValue(reaction.Emote, out var response) == true)
       {
         log.Info($"Reaction received matching message Id={messageContext.Id}, reaction.Emote.Name={reaction.Emote.Name}");
-        // Add to queue, handle the new request ... (use full)
-        await Task.Yield();
+        Player[] players = response is Player player ? new[] { player } : Array.Empty<Player>();
+        Team[] teams = response is Team team ? new[] { team } : Array.Empty<Team>();
+        var r = new SlappResponseObject(players, teams, splatTagController);
+
+        try
+        {
+          var (builder, reacts) = await ProcessSlappResponse(r);
+
+          // Build the split responses from the builder
+          IUserMessage? lastMessageSent = null;
+          foreach (var embed in builder.SmartBuild())
+          {
+            // Send the responses
+            lastMessageSent = await messageContext.ReplyAsync(
+              embed: embed)
+            .ConfigureAwait(false);
+          }
+
+          // Now we're at the end, react to the last message (and only do so if we've sent a message)
+          if (lastMessageSent != null)
+          {
+            AddReactionsToMessage(lastMessageSent, reacts);
+          }
+        }
+        catch (Exception ex)
+        {
+          string errorMessage = "Something went wrong processing the reaction. Blame Slate. 😒🤔" + ex.Message;
+          await messageContext.ReplyAsync(
+           embed: new MavisEmbedBuilder(errorMessage, Color.Red).BuildFirst())
+          .ConfigureAwait(false);
+          log.Error(ex, $"<@!97288493029416960> {ex}"); // @Slate in logging channel
+        }
         handled = true;
       }
       else
       {
-        log.Warn($"Something went wrong with handling the react: message={message}, Id={messageContext.Id}, reaction.Emote.Name={reaction.Emote.Name}");
+        log.Warn($"Discarding react against message={messageReactions}, Id={messageContext.Id}, reaction.Emote.Name={reaction.Emote.Name}");
       }
 
       if (handled)
       {
-        this.slappReactsQueue[messageContext.Id].Remove(reaction.Emote.Name);
+        this.slappReactsQueue[messageContext.Id].Remove(reaction.Emote);
       }
     }
 
-    private Task<(EmbedBuilder? builder, Color embedColour, Dictionary<string, IReadonlySourceable> reacts)>
+    private void AddReactionsToMessage(IUserMessage lastMessageSent, Dictionary<IEmote, IReadonlySourceable> reacts)
+    {
+      // Record into the buffer
+      this.slappReactsQueue[lastMessageSent.Id] = reacts;
+
+      // Always ensure we have room for the last message.
+      if (this.slappReactsQueue.Count > numbersKeyCaps.Count)
+      {
+        this.slappReactsQueue.Remove(this.slappReactsQueue.First().Key);
+      }
+
+      Task.Run(async () =>
+      {
+        foreach (var r in reacts)
+        {
+          try
+          {
+            await lastMessageSent.AddReactionAsync(r.Key);
+          }
+          catch (Exception ex)
+          {
+            log.Error($"Failed to add a reaction r.key={r.Key}. ex={ex}");
+          }
+        }
+      });
+    }
+
+    /// <summary>
+    /// Process the Slapp query string and parsed options.
+    /// </summary>
+    /// <param name="query"></param>
+    /// <param name="options"></param>
+    /// <returns></returns>
+    private Task<(MavisEmbedBuilder builder, Dictionary<IEmote, IReadonlySourceable> reacts)>
       ProcessSlappCommand(string query, MatchOptions options)
     {
       var players = splatTagController.MatchPlayer(query, options);
       var teams = splatTagController.MatchTeam(query, options);
       var responseObject = new SlappResponseObject(players, teams, splatTagController);
-      return ProcessSlapp(responseObject);
+      return ProcessSlappResponse(responseObject);
     }
 
-    private async Task<(EmbedBuilder? builder, Color embedColour, Dictionary<string, IReadonlySourceable> reacts)> ProcessSlapp(SlappResponseObject r)
+    /// <summary>
+    /// Process the Slapp Response and return the awaitable task for the resultant builder and reactions for that message.
+    /// </summary>
+    /// <param name="r">The constructed SlappResponseObject from Slapp</param>
+    private async Task<(MavisEmbedBuilder builder, Dictionary<IEmote, IReadonlySourceable> reacts)> ProcessSlappResponse(SlappResponseObject r)
     {
       string title;
       Color colour;
@@ -238,7 +304,7 @@ namespace Mavis.SlappSupport
       {
         if (r.HasTeamsPl)
         {
-          title = $"Found {r.teams.Length} teams!";
+          title = $"Found {r.Teams.Count} teams!";
           colour = Color.Gold;
         }
         else
@@ -262,16 +328,16 @@ namespace Mavis.SlappSupport
       }
       else if (r.HasPlayers && r.HasTeams)
       {
-        title = $"Found {r.players.Length} {"player".Plural(r.players)} and {r.teams.Length} {"team".Plural(r.teams)}!";
+        title = $"Found {r.players.Length} {"player".Plural(r.players)} and {r.Teams.Count} {"team".Plural(r.Teams)}!";
         colour = Color.Green;
       }
       else
       {
-        throw new NotImplementedException($"Slapp logic error players.Length={r.players.Length} teams.Length={r.teams.Length}");
+        throw new NotImplementedException($"Slapp logic error players.Length={r.players.Length} teams.Length={r.Teams.Count}");
       }
 
-      var builder = EmbedUtility.ToEmbed("", colour, title);
-      var reacts = new Dictionary<string, IReadonlySourceable>();  // Player or Team
+      var builder = new MavisEmbedBuilder().WithColor(colour).WithAuthor(title);
+      var reacts = new Dictionary<IEmote, IReadonlySourceable>();  // Player or Team
       if (r.HasPlayers)
       {
         for (int i = 0; i < r.players.Length && i < DiscordLimits.MAX_EMBED_RESULTS; i++)
@@ -290,9 +356,8 @@ namespace Mavis.SlappSupport
       }
       if (r.HasTeams)
       {
-        for (int i = 0; i < r.teams.Length && i < DiscordLimits.MAX_EMBED_RESULTS; i++)
+        foreach (Team team in r.Teams.Take(DiscordLimits.MAX_EMBED_RESULTS))
         {
-          var team = r.teams[i];
           try
           {
             await AddMatchedTeam(builder, reacts, r, team);
@@ -305,94 +370,24 @@ namespace Mavis.SlappSupport
         }
       }
       builder.WithFooter(Footer.GetRandomFooterPhrase() +
-        (r.players.Length + r.teams.Length > DiscordLimits.MAX_EMBED_RESULTS ? $"Only the first {DiscordLimits.MAX_EMBED_RESULTS} results are shown for players and teams." : ""),
+        (r.players.Length + r.Teams.Count > DiscordLimits.MAX_EMBED_RESULTS ? $"Only the first {DiscordLimits.MAX_EMBED_RESULTS} results are shown for players and teams." : ""),
         iconUrl: "https://media.discordapp.net/attachments/471361750986522647/758104388824072253/icon.png");
       await Task.Yield();
-      return (builder, colour, reacts);
+      return (builder, reacts);
     }
 
-    private async Task AddMatchedPlayer(EmbedBuilder builder, Dictionary<string, IReadonlySourceable> reacts, SlappResponseObject r, Player player)
+    private static async Task AddMatchedPlayer(MavisEmbedBuilder builder, Dictionary<IEmote, IReadonlySourceable> reacts, SlappResponseObject r, Player player)
     {
-      const int TOURNEYS_TO_TAKE_FOR_PLAYER = 2;
-
       // Transform names by adding a backslash to any backslashes.
       string[] names = player.Names.Where(n => !string.IsNullOrEmpty(n?.Value)).Select(n => n.Value.EscapeCharacters()).Distinct().ToArray();
       string currentName = (names.FirstOrDefault() ?? "(Unnamed Player)").SafeBackticks();
-      IReadOnlyList<(Team teamForPlayer, IReadOnlyList<Source> teamSources)>? resolvedTeams = r.GetTeamsForPlayer(player);
+      CalculateAddMatchedPlayerTeams(r, player, reacts, out string currentTeam, out List<string> oldTeams);
 
-      StringBuilder currentTeamBuilder = new();
-      if (r.players.Length == 1 && resolvedTeams.Count > 0)
-      {
-        var emojiNum = AddToReactsDict(reacts, resolvedTeams[0].teamForPlayer);
-        if (emojiNum != null)
-        {
-          currentTeamBuilder.Append("Plays for:\n").Append(emojiNum).Append(' ').Append(resolvedTeams[0].teamForPlayer.ToString().WrapInBackticks()).Append('\n');
-        }
-
-        var tournamentAppearancesForThisPlayer = resolvedTeams[0].teamSources.Where(s => s.Players.Contains(player)).OrderByDescending(s => s).Select(s => s.GetLinkedNameDisplay()).ToArray();
-        if (tournamentAppearancesForThisPlayer.Length > 0)
-        {
-          currentTeamBuilder.AppendJoin(", ", tournamentAppearancesForThisPlayer.Take(TOURNEYS_TO_TAKE_FOR_PLAYER));
-
-          bool andMore = tournamentAppearancesForThisPlayer.Length > TOURNEYS_TO_TAKE_FOR_PLAYER;
-          int andMoreCount = tournamentAppearancesForThisPlayer.Length - TOURNEYS_TO_TAKE_FOR_PLAYER;
-          currentTeamBuilder.Append(andMore ? $" +{andMoreCount} other tourneys…" : "");
-        }
-      }
-
-      if (currentTeamBuilder.Length == 0 && resolvedTeams.Count > 0)
-      {
-        currentTeamBuilder.Append("Plays for: ").Append(resolvedTeams[0].teamForPlayer.ToString().WrapInBackticks()).Append('\n');
-      }
-
-      string currentTeam = currentTeamBuilder.ToString();
-
-      // Old teams
-      var oldTeams = new List<string>();
-      if (resolvedTeams.Count > 1)
-      {
-        var resolvedOldTeams = resolvedTeams.Skip(1);
-
-        // Add reacts and tournament entries if for a single player entry
-        if (r.players.Length == 1)
-        {
-          foreach (var (teamForPlayer, teamSources) in resolvedOldTeams)
-          {
-            StringBuilder sb = new();
-            var tournamentAppearancesForThisPlayer = teamSources.Where(s => s.Players.Contains(player)).OrderByDescending(s => s).Select(s => s.GetLinkedNameDisplay()).ToArray();
-
-            var emojiNum = AddToReactsDict(reacts, teamForPlayer);
-            if (emojiNum != null)
-            {
-              sb.Append(emojiNum).Append(' ');
-            }
-            sb.Append(teamForPlayer.ToString().WrapInBackticks()).Append(' ');
-
-            if (tournamentAppearancesForThisPlayer.Length > 0)
-            {
-              sb.AppendJoin(", ", tournamentAppearancesForThisPlayer.Take(TOURNEYS_TO_TAKE_FOR_PLAYER));
-
-              bool andMore = tournamentAppearancesForThisPlayer.Length > TOURNEYS_TO_TAKE_FOR_PLAYER;
-              int andMoreCount = tournamentAppearancesForThisPlayer.Length - TOURNEYS_TO_TAKE_FOR_PLAYER;
-              sb.Append(andMore ? $" +{andMoreCount} other tourneys…" : "");
-            }
-            oldTeams.Add(sb.ToString());
-          }
-        }
-        else
-        {
-          oldTeams.AddRange(resolvedOldTeams.Select(oldT => oldT.teamForPlayer.ToString().WrapInBackticks()));
-        }
-      }
-
-      string otherNames = "";
-      if (names.Length > 1)
-      {
-        otherNames =
-          string.Join("\n", names.Skip(1).Select(n => n.Truncate(256)))
+      string otherNames = (names.Length > 1)
+        ? string.Join("\n", names.Skip(1).Select(n => n.Truncate(256)))
           .ConditionalString(prefix: "_ᴬᴷᴬ_ ```", suffix: "```\n")
-          .Truncate(1000, "…\n```\n");
-      }
+          .Truncate(1000, "…\n```\n")
+        : "";
 
       string[] battlefy = player.Battlefy.Slugs.Select(profile => $"{BATTLEFY} [{profile.Value.EscapeCharacters()}]({profile.Uri})").ToArray();
       string[] discord = player.DiscordIds.Select(profile =>
@@ -404,100 +399,38 @@ namespace Mavis.SlappSupport
       string[] twitter = player.Twitter.Select(profile => $"{TWITTER} [{profile.Value.EscapeCharacters()}]({profile.Uri})").ToArray();
       string countryFlag = (player.CountryFlag + " ").Or("");
       string top500 = player.Top500 ? (TOP_500 + " ") : "";
-      string fieldHead = countryFlag + top500 + currentName.Truncate(DiscordLimits.FIELD_NAME_LIMIT).Or("(Unnamed Player)");
       string[] notableResults = GetFirstPlacementsText(r, player).ToArray();
-      var bestLowInk = r.GetBestLowInkPlacement(player);
-      int? winningLowInkPos = bestLowInk != null ?
-        ((bestLowInk.Value.b.Name.Contains("Top Cut") || bestLowInk.Value.b.Name.Contains("Alpha")) ? bestLowInk.Value.place : null)
-        : null;
-      List<string> groupedPlayerSources = GetGroupedSourcesText(player);
+      string? lowInkPosStr = GetWinningLowInkPosString(r, player);
+      string fieldHead = countryFlag + top500 + currentName;
 
       // Single player detailed view --
       // If there's just the one matched player, move the extras to another field.
-      if (r.players.Length == 1 && r.teams.Length < 14)
+      if (r.players.Length == 1 && r.Teams.Count < 14)
       {
-        var fieldBody = otherNames;
-        builder.AddField(
-          name: fieldHead,
-          value: fieldBody.Truncate(DiscordLimits.FIELD_VALUE_LIMIT).Or("(No other names)"),
-          inline: false
-        );
+        builder.AddField(fieldHead, otherNames, defaultName: "(Unnamed Player)", defaultValue: "(No other names)");
 
         var fcsLength = player.FCInformation.Count;
-        builder.AddField(
-          name: "FCs:",
-          value: $"{fcsLength} known friend code".Plural(fcsLength),
-          inline: false
-        );
+        builder.AddField("FCs:", $"{fcsLength} known friend code".Plural(fcsLength));
 
         if (currentTeam?.Length > 0)
         {
-          builder.AddField(
-            name: "Current team:",
-            value: currentTeam.Truncate(DiscordLimits.FIELD_VALUE_LIMIT),
-            inline: false
-          );
+          builder.AddField("Current team:", currentTeam);
         }
 
-        if (oldTeams.Count > 0)
-        {
-          builder.AddUnrolledList(
-            fieldHeader: "Old teams",
-            fieldValues: oldTeams
-          );
-        }
+        builder.ConditionallyAddUnrolledList("Old teams", oldTeams);
+        builder.ConditionallyAddUnrolledList("Twitch", twitch);
+        builder.ConditionallyAddUnrolledList("Twitter", twitter);
+        builder.ConditionallyAddUnrolledList("Battlefy", battlefy);
+        builder.ConditionallyAddUnrolledList("Discord", discord);
 
-        if (twitch.Length > 0)
-        {
-          builder.AddUnrolledList(
-            fieldHeader: "Twitch",
-            fieldValues: twitch
-          );
-        }
-
-        if (twitter.Length > 0)
-        {
-          builder.AddUnrolledList(
-            fieldHeader: "Twitter",
-            fieldValues: twitter
-          );
-        }
-
-        if (battlefy.Length > 0)
-        {
-          builder.AddUnrolledList(
-            fieldHeader: "Battlefy",
-            fieldValues: battlefy
-          );
-        }
-
-        if (discord.Length > 0)
-        {
-          builder.AddUnrolledList(
-            fieldHeader: "Discord",
-            fieldValues: discord
-          );
-        }
-
-        if (notableResults.Length > 0 || player.PlusMembership.Count > 0 || winningLowInkPos != null)
+        if (notableResults.Length > 0 || player.PlusMembership.Count > 0 || lowInkPosStr is not null)
         {
           var notableResultLines = new List<string>();
-          notableResultLines.AddRange(player.PlusMembership.OrderByDescending(plus => plus.Date).Select(plus => $"{PLUS} +{plus.Level} member ({plus.Date:MM yyyy})"));
+          notableResultLines.AddRange(player.PlusMembership.OrderByDescending(plus => plus.Date).Select(plus => $"{PLUS} +{plus.Level} member ({plus.Date:MMM yyyy})"));
 
-          if (winningLowInkPos != null)
+          if (lowInkPosStr is not null)
           {
-            if (winningLowInkPos == 1)
-            {
-              notableResultLines.Add($"{LOW_INK} Low Ink Winner");
-            }
-            else if (winningLowInkPos == 2)
-            {
-              notableResultLines.Add($"{LOW_INK} Low Ink 🥈");
-            }
-            else if (winningLowInkPos == 3)
-            {
-              notableResultLines.Add($"{LOW_INK} Low Ink 🥉");
-            }
+            notableResultLines.Add(lowInkPosStr);
           }
 
           notableResultLines.AddRange(notableResults.Select(result => $"🏆 Won {result}"));
@@ -505,18 +438,11 @@ namespace Mavis.SlappSupport
           builder.AddUnrolledList("Notable Wins", notableResultLines);
         }
 
-        if (player.Weapons.Count > 0)
-        {
-          builder.AddUnrolledList(
-            fieldHeader: "Weapons",
-            fieldValues: player.Weapons,
-            separator: ", "
-          );
-        }
+        builder.ConditionallyAddUnrolledList("Weapons", player.Weapons, separator: ", ");
 
         // Add Skill/Clout here
 
-        builder.AddUnrolledList("Sources", groupedPlayerSources);
+        builder.AddUnrolledList("Sources", GetGroupedSourcesText(player));
       }
 
       // Multiple players summary view --
@@ -525,28 +451,17 @@ namespace Mavis.SlappSupport
         var emojiNum = AddToReactsDict(reacts, player);
         var additionalInfo = emojiNum != null ? $"\n React {emojiNum} for more…\n" : $"\n More info: /full {player.Id}\n";
         string notableResultsStr = "";
-        if (notableResults.Length > 0 || player.PlusMembership.Count > 0 || winningLowInkPos != null)
+        if (notableResults.Length > 0 || player.PlusMembership.Count > 0 || lowInkPosStr is not null)
         {
           var latestPlus = player.PlusMembership.OrderByDescending(plus => plus.Date).FirstOrDefault();
           notableResultsStr += latestPlus == null ? "" : $"{PLUS} +{latestPlus.Level} member ({latestPlus.Date:MMM yyyy})\n";
 
-          if (winningLowInkPos != null)
+          if (lowInkPosStr is not null)
           {
-            if (winningLowInkPos == 1)
-            {
-              notableResultsStr += ($"{LOW_INK} Low Ink Winner\n");
-            }
-            else if (winningLowInkPos == 2)
-            {
-              notableResultsStr += ($"{LOW_INK} Low Ink 🥈\n");
-            }
-            else if (winningLowInkPos == 3)
-            {
-              notableResultsStr += ($"{LOW_INK} Low Ink 🥉\n");
-            }
+            notableResultsStr += lowInkPosStr + "\n";
           }
 
-          notableResultsStr += string.Join("\n", notableResults.Select(result => $"🏆 Won {result}"));
+          notableResultsStr += string.Join("\n", notableResults.Select(result => $"🏆 Won {result}")).ConditionalString(suffix: "\n");
         }
 
         int fcsLength = player.FCInformation.Count;
@@ -565,33 +480,124 @@ namespace Mavis.SlappSupport
           .ConditionalString(suffix: "\n");
 
         var fieldBody = (otherNames + currentTeam + oldTeamsStr + fcsStr + socialsStr + notableResultsStr).Or("(Nothing else to say)\n");
-        var sourcesField = "Sources:\n" + string.Join("\n", groupedPlayerSources);
-        fieldBody += sourcesField;
+        fieldBody += "Sources:\n" + string.Join("\n", GetGroupedSourcesText(player));
 
-        if (fieldBody.Length + additionalInfo.Length < DiscordLimits.FIELD_VALUE_LIMIT)
+        if (fieldBody.Length + additionalInfo.Length >= DiscordLimits.FIELD_VALUE_LIMIT)
         {
-          fieldBody += additionalInfo;
+          fieldBody = fieldBody.Truncate(DiscordLimits.FIELD_VALUE_LIMIT - 4 - additionalInfo.Length).CloseBackticksIfUnclosed();
         }
-        else
-        {
-          fieldBody = fieldBody.Truncate(DiscordLimits.FIELD_VALUE_LIMIT - 4 - additionalInfo.Length);
-          fieldBody = fieldBody.CloseBackticksIfUnclosed();
-          fieldBody += additionalInfo;
-        }
-
-        builder.AddField(
-          name: fieldHead,
-          value: fieldBody,
-          inline: false
-          );
+        fieldBody += additionalInfo;
+        builder.AddField(fieldHead, fieldBody, defaultName: "(Unnamed Player)");
         await Task.Yield();
       }
     }
 
-    private async Task AddMatchedTeam(EmbedBuilder builder, Dictionary<string, IReadonlySourceable> reacts, SlappResponseObject r, Team team)
+    private static string? GetWinningLowInkPosString(SlappResponseObject r, Player player)
+    {
+      var bestLowInk = r.GetBestLowInkPlacement(player);
+      int? winningLowInkPos = bestLowInk != null ?
+        ((bestLowInk.Value.b.Name.Contains("Top Cut") || bestLowInk.Value.b.Name.Contains("Alpha")) ? bestLowInk.Value.place : null)
+        : null;
+
+      string? lowInkPosStr = null;
+      if (winningLowInkPos is not null)
+      {
+        if (winningLowInkPos == 1)
+        {
+          lowInkPosStr = $"{LOW_INK} Low Ink Winner";
+        }
+        else if (winningLowInkPos == 2)
+        {
+          lowInkPosStr = $"{LOW_INK} Low Ink 🥈";
+        }
+        else if (winningLowInkPos == 3)
+        {
+          lowInkPosStr = $"{LOW_INK} Low Ink 🥉";
+        }
+      }
+
+      return lowInkPosStr;
+    }
+
+    private static void CalculateAddMatchedPlayerTeams(SlappResponseObject r, Player player, Dictionary<IEmote, IReadonlySourceable> reacts, out string currentTeam, out List<string> oldTeams)
+    {
+      // Current and old teams
+      IReadOnlyList<(Team teamForPlayer, IReadOnlyList<Source> teamSources)>? resolvedTeams = r.GetTeamsForPlayer(player);
+      currentTeam = "";
+      oldTeams = new();
+      if (resolvedTeams.Count > 0)
+      {
+        const int TOURNEYS_TO_TAKE_FOR_PLAYER = 2;
+        StringBuilder currentTeamBuilder = new();
+
+        if (r.players.Length == 1)
+        {
+          var emojiNum = AddToReactsDict(reacts, resolvedTeams[0].teamForPlayer);
+          if (emojiNum != null)
+          {
+            currentTeamBuilder.Append("Plays for:\n").Append(emojiNum).Append(' ').Append(resolvedTeams[0].teamForPlayer.ToString().WrapInBackticks()).Append('\n');
+          }
+
+          var tournamentAppearancesForThisPlayer = resolvedTeams[0].teamSources.Where(s => s.Players.Contains(player)).OrderByDescending(s => s).Select(s => s.GetLinkedNameDisplay()).ToArray();
+          if (tournamentAppearancesForThisPlayer.Length > 0)
+          {
+            currentTeamBuilder.AppendJoin(", ", tournamentAppearancesForThisPlayer.Take(TOURNEYS_TO_TAKE_FOR_PLAYER));
+
+            bool andMore = tournamentAppearancesForThisPlayer.Length > TOURNEYS_TO_TAKE_FOR_PLAYER;
+            int andMoreCount = tournamentAppearancesForThisPlayer.Length - TOURNEYS_TO_TAKE_FOR_PLAYER;
+            currentTeamBuilder.Append(andMore ? $" +{andMoreCount} other tourneys…" : "");
+          }
+        }
+
+        if (currentTeamBuilder.Length == 0)
+        {
+          currentTeamBuilder.Append("Plays for: ").Append(resolvedTeams[0].teamForPlayer.ToString().WrapInBackticks()).Append('\n');
+        }
+        currentTeam = currentTeamBuilder.ToString();
+
+        // Old teams
+        if (resolvedTeams.Count > 1)
+        {
+          var resolvedOldTeams = resolvedTeams.Skip(1);
+
+          // Add reacts and tournament entries if for a single player entry
+          if (r.players.Length == 1)
+          {
+            foreach (var (teamForPlayer, teamSources) in resolvedOldTeams)
+            {
+              StringBuilder sb = new();
+              var tournamentAppearancesForThisPlayer = teamSources.Where(s => s.Players.Contains(player)).OrderByDescending(s => s).Select(s => s.GetLinkedNameDisplay()).ToArray();
+
+              var emojiNum = AddToReactsDict(reacts, teamForPlayer);
+              if (emojiNum != null)
+              {
+                sb.Append(emojiNum).Append(' ');
+              }
+              sb.Append(teamForPlayer.ToString().WrapInBackticks()).Append(' ');
+
+              if (tournamentAppearancesForThisPlayer.Length > 0)
+              {
+                sb.AppendJoin(", ", tournamentAppearancesForThisPlayer.Take(TOURNEYS_TO_TAKE_FOR_PLAYER));
+
+                bool andMore = tournamentAppearancesForThisPlayer.Length > TOURNEYS_TO_TAKE_FOR_PLAYER;
+                int andMoreCount = tournamentAppearancesForThisPlayer.Length - TOURNEYS_TO_TAKE_FOR_PLAYER;
+                sb.Append(andMore ? $" +{andMoreCount} other tourneys…" : "");
+              }
+              oldTeams.Add(sb.ToString());
+            }
+          }
+          else
+          {
+            oldTeams.AddRange(resolvedOldTeams.Select(oldT => oldT.teamForPlayer.ToString().WrapInBackticks()));
+          }
+        }
+      }
+    }
+
+    private async Task AddMatchedTeam(MavisEmbedBuilder builder, Dictionary<IEmote, IReadonlySourceable> reacts, SlappResponseObject r, Team team)
     {
       var groupedTeamSources = GetGroupedSourcesText(team);
-      var players = r.playersForTeams[team.Id];
+      var players = splatTagController.GetPlayersForTeam(team);
       var playersInTeam = new List<Player>();
       var playersEverInTeam = new List<Player>();
       var playerStrings = new List<string>();
@@ -617,7 +623,7 @@ namespace Mavis.SlappSupport
 
       // Single team detailed view.
       // If there's just the one matched team, move the sources to the next field.
-      if (r.teams.Length == 1)
+      if (r.Teams.Count == 1)
       {
         // Add in emoji reacts
         for (int j = 0; j < playerStringsDetailed.Count; j++)
@@ -631,12 +637,11 @@ namespace Mavis.SlappSupport
 
         // Team details
         var tagsStr = team.ClanTags.Count > 0 ? "Tags: " + string.Join(", ", team.ClanTags.Select(tag => tag.Value.SafeBackticks())) + "\n" : "";
-        var numPlayersStr = players.Length + " player".Plural(players);
-        var info = (divPhrase + tagsStr + numPlayersStr).Or(".");
+        var numPlayersStr = " " + players.Length + " player".Plural(players);
         builder.AddField(
-          name: team.ToString().Truncate(DiscordLimits.FIELD_NAME_LIMIT).Or("(Unnamed Team)"),
-          value: info.Truncate(DiscordLimits.FIELD_VALUE_LIMIT),
-          inline: false
+          name: team.ToString(),
+          value: divPhrase + tagsStr + numPlayersStr,
+          defaultName: "(Unnamed Team)"
           );
 
         // Show team's alts if any
@@ -673,7 +678,7 @@ namespace Mavis.SlappSupport
 
         builder.AddField(
           name: "Slapp Id:",
-          value: team.Id.ToString().Truncate(DiscordLimits.FIELD_VALUE_LIMIT),
+          value: team.Id.ToString(),
           inline: false
           );
 
@@ -683,7 +688,7 @@ namespace Mavis.SlappSupport
       else
       {
         var emojiNum = AddToReactsDict(reacts, team);
-        var additionalInfo = emojiNum == null ? $"\n React {emojiNum} for more…\n" : $"\n More info: /full {team.Id}\n";
+        var additionalInfo = emojiNum != null ? $"\n React {emojiNum} for more…\n" : $"\n More info: /full {team.Id}\n";
         var fieldBody = $"{divPhrase}Players:\n{string.Join(", ", playerStrings)}\n";
         var sourcesField = "Sources:\n" + string.Join("\n", groupedTeamSources);
         fieldBody += sourcesField;
@@ -699,24 +704,11 @@ namespace Mavis.SlappSupport
         }
 
         builder.AddField(
-          name: team.ToString().Truncate(DiscordLimits.FIELD_NAME_LIMIT).Or("(Unnamed Team)"),
-          value: fieldBody.Truncate(DiscordLimits.FIELD_VALUE_LIMIT),
-          inline: false
+          name: team.ToString(),
+          value: fieldBody,
+          defaultName: "(Unnamed Team)"
         );
         await Task.Yield();
-      }
-    }
-
-    /// <summary>
-    /// Add the reaction to the reacts buffer to keep track of message reactions.
-    /// </summary>
-    private void AddToReactsBuffer(ulong messageId, IDictionary<string, IReadonlySourceable> reacts)
-    {
-      this.slappReactsQueue[messageId] = reacts;
-      // Always ensure we have room for the last message.
-      if (this.slappReactsQueue.Count > numbersKeyCaps.Count)
-      {
-        this.slappReactsQueue.Remove(this.slappReactsQueue.First().Key);
       }
     }
 
@@ -724,13 +716,13 @@ namespace Mavis.SlappSupport
     /// Adds the player or team to the reacts dictionary. Returns the reaction that represents the addition,
     /// or null if there are no more reactions left in the NUMBERS_KEY_CAPS collection.
     /// </summary>
-    private static string? AddToReactsDict(IDictionary<string, IReadonlySourceable> reacts, IReadonlySourceable playerOrTeam)
+    private static string? AddToReactsDict(IDictionary<IEmote, IReadonlySourceable> reacts, IReadonlySourceable playerOrTeam)
     {
       if (reacts.Count < numbersKeyCaps.Count)
       {
-        string emojiNum = numbersKeyCaps[reacts.Count];
-        reacts.Add(emojiNum, playerOrTeam);
-        return emojiNum;
+        string keycapEmoteStr = numbersKeyCaps[reacts.Count];
+        reacts.Add(keycapEmoteStr.ToEmote(), playerOrTeam);
+        return keycapEmoteStr;
       }
       return null;
     }

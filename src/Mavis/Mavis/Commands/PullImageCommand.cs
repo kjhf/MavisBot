@@ -113,7 +113,7 @@ namespace Mavis.Commands
         message = file;
       }
 
-      await command.RespondAsync(embed: (file == null) ? null : EmbedUtility.ToEmbed(imageURL: file).Build(), text: message, ephemeral: subCommand.isPrivate);
+      await command.RespondAsync(embed: (file == null) ? null : new MavisEmbedBuilder(file, messageIsImageUrl: true).BuildFirst(), text: message, ephemeral: subCommand.isPrivate);
     }
   }
 }

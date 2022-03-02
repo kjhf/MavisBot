@@ -176,7 +176,7 @@ namespace Mavis.Commands
       }
 
       string output = sb.ToString();
-      await command.RespondAsync(embed: EmbedUtility.ToEmbed(output, embedColour).Build(), ephemeral: true).ConfigureAwait(false);
+      await command.RespondAsync(embed: new MavisEmbedBuilder(output, embedColour).BuildFirst(), ephemeral: true).ConfigureAwait(false);
     }
   }
 }

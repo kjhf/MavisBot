@@ -1,4 +1,6 @@
-﻿using SplatTagCore;
+﻿using NLog;
+using NLog.Fluent;
+using SplatTagCore;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -10,80 +12,54 @@ namespace Mavis.SlappSupport
 {
   internal record class SlappResponseObject
   {
+    private static readonly Logger log = LogManager.GetCurrentClassLogger();
     public readonly Player[] players;
-    public readonly Team[] teams;
+    private readonly Dictionary<Guid, Team> teamsDict;
+    public ICollection<Team> Teams => teamsDict.Values;
     private readonly SplatTagController splatTagController;
-    public readonly Dictionary<Guid, Team> additionalTeams = new();
-    public readonly Dictionary<Guid, (Player, bool)[]> playersForTeams = new();
     public readonly Dictionary<Guid, Dictionary<Source, Bracket[]>> placementsForPlayers = new();
 
     public bool HasPlayers => players.Length > 0;
     public bool HasPlayersPl => players.Length > 1;
-    public bool HasTeams => teams.Length > 0;
-    public bool HasTeamsPl => teams.Length > 1;
+    public bool HasTeams => Teams.Count > 0;
+    public bool HasTeamsPl => Teams.Count > 1;
 
     public SlappResponseObject(Player[] players, Team[] teams, SplatTagController splatTagController)
     {
       this.players = players;
-      this.teams = teams;
+      this.teamsDict = teams.ToDictionary(t => t.Id, t => t);
       this.splatTagController = splatTagController;
 
-      if (HasPlayers || HasTeams)
+      try
       {
-        additionalTeams =
-          players
-          .SelectMany(p => p.TeamInformation.GetTeamsUnordered().Select(id => splatTagController.GetTeamById(id)))
-          .Distinct()
-          .ToDictionary(t => t.Id, t => t);
-        additionalTeams[Team.NoTeam.Id] = Team.NoTeam;
-        additionalTeams[Team.UnlinkedTeam.Id] = Team.UnlinkedTeam;
-
-        playersForTeams =
-          teams
-          .ToDictionary(t => t.Id, t => splatTagController.GetPlayersForTeam(t));
-
-        foreach (var pair in playersForTeams)
+        foreach (var player in players)
         {
-          foreach ((Player, bool) tuple in pair.Value)
+          placementsForPlayers[player.Id] = new Dictionary<Source, Bracket[]>();
+          foreach (var source in player.Sources)
           {
-            foreach (Guid t in tuple.Item1.TeamInformation.GetTeamsUnordered())
-            {
-              additionalTeams.TryAdd(t, splatTagController.GetTeamById(t));
-            }
+            placementsForPlayers[player.Id][source] = source.Brackets;
           }
         }
-
-        try
-        {
-          foreach (var player in players)
-          {
-            placementsForPlayers[player.Id] = new Dictionary<Source, Bracket[]>();
-            foreach (var source in player.Sources)
-            {
-              placementsForPlayers[player.Id][source] = source.Brackets;
-            }
-          }
-        }
-        catch (OutOfMemoryException oom)
-        {
-          const string message = "ERROR: OutOfMemoryException on PlacementsForPlayers. Will continue anyway.";
-          Console.WriteLine(message);
-          Console.WriteLine(oom.ToString());
-          placementsForPlayers = new Dictionary<Guid, Dictionary<Source, Bracket[]>>();
-        }
+      }
+      catch (OutOfMemoryException oom)
+      {
+        const string message = "ERROR: OutOfMemoryException on PlacementsForPlayers. Will continue anyway.";
+        log.Error(oom, message);
+        placementsForPlayers = new Dictionary<Guid, Dictionary<Source, Bracket[]>>();
       }
     }
 
     public Team? GetTeam(Guid teamId)
     {
-      var team = this.splatTagController.GetTeamById(teamId);
-      return (team == Team.UnlinkedTeam) ? null : team;
+      // First, check our dictionary
+      if (teamsDict.TryGetValue(teamId, out var team)) { return team; }
+
+      // If we don't have this entry, search the wider list
+      return (this.splatTagController.GetTeamById(teamId, out team)) ? team : null;
     }
 
     public IReadOnlyList<(Team, IReadOnlyList<Source>)> GetTeamsForPlayer(Player p)
-    {
-      return p.TeamInformation.GetTeamsSourcedUnordered().Select(pair => (GetTeam(pair.Key), pair.Value)).Where(pair => pair.Item1 != null).ToImmutableArray();
-    }
+      => p.TeamInformation.GetTeamsSourcedUnordered().Select(pair => (GetTeam(pair.Key), pair.Value)).Where(pair => pair.Item1 != null).ToImmutableArray();
 
     /// <summary>
     /// Get a yielded enumerable of placements for this player where the player has come in the given <paramref name="place"/> (1 by default for 1st).

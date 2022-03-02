@@ -15,11 +15,13 @@ namespace Mavis.Commands
   {
     private static readonly Logger log = LogManager.GetCurrentClassLogger();
     private static SlappCommandHandler? slappCommandHandler;
+    private ulong? myId;
 
     public string Name => "slapp";
 
     public ApplicationCommandProperties BuildCommand(DiscordSocketClient client)
     {
+      myId = client.CurrentUser.Id;
       Task.Run(() =>
       {
         string? slappFolder = Environment.GetEnvironmentVariable("SLAPP_DATA_FOLDER");
@@ -45,12 +47,16 @@ namespace Mavis.Commands
         {
           log.Error(ex, "SplatTagController threw an exception: " + ex);
         }
+        finally
+        {
+          client.SetStatusAsync(UserStatus.Online).ConfigureAwait(false);
+        }
       });
 
       var builder = new SlashCommandBuilder()
           .WithName(Name)
           .WithDescription("Query a Splatoon name on Slapp.")
-          .AddOption("query", ApplicationCommandOptionType.String, "What you wanna know. All following parameters are optional. Don't write options in this one!", isRequired: true)
+          .AddOption("query", ApplicationCommandOptionType.String, "What you wanna know. All following parameters are optional. Don't write options in this one!", isRequired: true, isDefault: null)
           ;
       foreach (var (optionType, flagName, description, _) in ConsoleOptions.GetOptionsAsTuple())
       {
@@ -65,6 +71,7 @@ namespace Mavis.Commands
           new SlashCommandOptionBuilder()
           .WithName(flagName.ToKebabCase())
           .WithDescription(description)
+          .WithDefault(false)
           .WithRequired(false);
 
         /*
@@ -104,9 +111,26 @@ namespace Mavis.Commands
       }
       else
       {
-        if ((messageContext.HasValue && !messageContext.Value.Author.IsBot) || (reaction.User.IsSpecified && !reaction.User.Value.IsBot))
+        // If the message was written by us, and a non-bot user reacted to it.
+        if (reaction.User.IsSpecified && !reaction.User.Value.IsBot)
         {
-          await slappCommandHandler.HandleReaction(messageContext, channelContext, reaction);
+          IUserMessage? message =
+            (messageContext.HasValue ? messageContext.Value : reaction.Message.GetValueOrDefault())
+            ?? await messageContext.GetOrDownloadAsync();
+
+          log.Trace($"Found reaction... message={message}, Id={message.Id}, " +
+            $"channelContext={channelContext}, HasValue={channelContext.HasValue}, Id={channelContext.Id}, " +
+            $" reaction={reaction}, reaction.Emote.Name={reaction.Emote.Name}");
+
+          if (message.Author.Id == this.myId)
+          {
+            log.Debug($"Reaction message.Id={message.Id} came from us, reaction.Emote.Name={reaction.Emote.Name}, forwarding on...");
+            await slappCommandHandler.HandleReaction(message, channelContext, reaction);
+          }
+          else
+          {
+            log.Trace($"...but not pursuing as it's not us (failed {message.Author.Id} == {this.myId})");
+          }
         }
       }
     }
@@ -120,6 +144,7 @@ namespace Mavis.Commands
       }
       else
       {
+        await command.DeferAsync(ephemeral: true);
         await slappCommandHandler.Execute(client, command);
       }
     }
