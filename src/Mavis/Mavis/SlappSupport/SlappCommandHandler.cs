@@ -6,6 +6,7 @@ using SplatTagCore;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -104,7 +105,7 @@ namespace Mavis.SlappSupport
       };
 
       // If this is a friend code query
-      if (query.StartsWith("sw-", StringComparison.OrdinalIgnoreCase))
+      if (query.StartsWith("SW-", StringComparison.OrdinalIgnoreCase))
       {
         string param = query[3..];
         try
@@ -249,10 +250,11 @@ namespace Mavis.SlappSupport
       // Record into the buffer
       this.slappReactsQueue[lastMessageSent.Id] = reacts;
 
-      // Always ensure we have room for the last message.
-      if (this.slappReactsQueue.Count > numbersKeyCaps.Count)
+      // Keep a rolling limit of x messages' data
+      if (this.slappReactsQueue.Count > 50)
       {
-        this.slappReactsQueue.Remove(this.slappReactsQueue.First().Key);
+        // Take the minimum key by id (this should be the earliest in time).
+        this.slappReactsQueue.Remove(this.slappReactsQueue.Min(pair => pair.Key));
       }
 
       Task.Run(async () =>
@@ -337,7 +339,7 @@ namespace Mavis.SlappSupport
       }
 
       var builder = new MavisEmbedBuilder().WithColor(colour).WithAuthor(title);
-      var reacts = new Dictionary<IEmote, IReadonlySourceable>();  // Player or Team
+      var reactsForMessage = new Dictionary<IEmote, IReadonlySourceable>();  // Player or Team
       if (r.HasPlayers)
       {
         for (int i = 0; i < r.players.Length && i < DiscordLimits.MAX_EMBED_RESULTS; i++)
@@ -345,7 +347,7 @@ namespace Mavis.SlappSupport
           var player = r.players[i];
           try
           {
-            await AddMatchedPlayer(builder, reacts, r, player);
+            await AddMatchedPlayer(builder, reactsForMessage, r, player);
           }
           catch (Exception ex)
           {
@@ -360,7 +362,7 @@ namespace Mavis.SlappSupport
         {
           try
           {
-            await AddMatchedTeam(builder, reacts, r, team);
+            await AddMatchedTeam(builder, reactsForMessage, r, team);
           }
           catch (Exception ex)
           {
@@ -373,7 +375,7 @@ namespace Mavis.SlappSupport
         (r.players.Length + r.Teams.Count > DiscordLimits.MAX_EMBED_RESULTS ? $"Only the first {DiscordLimits.MAX_EMBED_RESULTS} results are shown for players and teams." : ""),
         iconUrl: "https://media.discordapp.net/attachments/471361750986522647/758104388824072253/icon.png");
       await Task.Yield();
-      return (builder, reacts);
+      return (builder, reactsForMessage);
     }
 
     private static async Task AddMatchedPlayer(MavisEmbedBuilder builder, Dictionary<IEmote, IReadonlySourceable> reacts, SlappResponseObject r, Player player)
@@ -637,14 +639,14 @@ namespace Mavis.SlappSupport
 
         // Team details
         var tagsStr = team.ClanTags.Count > 0 ? "Tags: " + string.Join(", ", team.ClanTags.Select(tag => tag.Value.SafeBackticks())) + "\n" : "";
-        var numPlayersStr = " " + players.Length + " player".Plural(players);
+        var numPlayersStr = " " + players.Count + " player".Plural(players);
         builder.AddField(
           name: team.ToString(),
           value: divPhrase + tagsStr + numPlayersStr,
           defaultName: "(Unnamed Team)"
-          );
+        );
 
-        // Show team's alts if any
+        // Show team's alternate if any
         if (team.Names.Count > 1)
         {
           builder.AddField(
@@ -676,11 +678,17 @@ namespace Mavis.SlappSupport
 
         // Insert Skills and Clout here ...
 
+        builder.ConditionallyAddField(
+          name: BATTLEFY + " Battlefy Uri:",
+          value: team.BattlefyPersistentTeamId?.Uri?.ToString(),
+          inline: false
+        );
+
         builder.AddField(
           name: "Slapp Id:",
           value: team.Id.ToString(),
           inline: false
-          );
+        );
 
         builder.AddUnrolledList("Sources", groupedTeamSources);
       }
@@ -729,14 +737,66 @@ namespace Mavis.SlappSupport
 
     /// <summary>
     /// Group the SimpleSource list for the specified sources/team/player by tourney name.
+    /// Keyed by a group key which roughly relates to the sources (e.g. the sources' beginning stripped names which may include the organisation)
     /// </summary>
-    private static ImmutableSortedDictionary<string, List<Source>> GetGroupedSources(IReadonlySourceable obj)
+    internal static ImmutableSortedDictionary<string, List<Source>> GetGroupedSources(IReadonlySourceable obj)
     {
       var sources = obj.Sources;
       var result = new Dictionary<string, List<Source>>();
+
       foreach (var source in sources)
       {
-        result.AddOrAppend(source.StrippedTournamentName, source);
+        string name = source.StrippedTournamentName;
+        var separatorIndexes = name.IndexOfAll('-');
+        if (separatorIndexes.Count > 0)
+        {
+          List<string> majorityNames = new();
+          // reverse order, missing the first and last parts for substrings. If there are 2 or fewer hyphens, no names are made.
+          for (int i = separatorIndexes.Count - 1; i > 0; i--)
+          {
+            string majorityName = name[..separatorIndexes[i]];
+            majorityNames.Add(majorityName);
+          }
+
+          string? existingGroupKey = null;
+          string? bestMajorityName = null;
+          foreach (string majorityName in majorityNames)
+          {
+            existingGroupKey = result.Keys.FirstOrDefault(group => majorityName.Length > group.Length ? majorityName.StartsWith(group) : group.StartsWith(majorityName));
+            if (existingGroupKey != null)
+            {
+              bestMajorityName = majorityName;
+              break;
+            }
+          }
+
+          if (existingGroupKey == null)
+          {
+            result.AddOrAppend(name, source); // Add the full name rather than the majority name
+          }
+          else
+          {
+            // If we need to migrate the group
+            Debug.Assert(bestMajorityName != null, "Expected bestMajorityName set if existingGroupKey is not null.");
+            if (bestMajorityName.Length < existingGroupKey.Length)
+            {
+              var existingSources = result[existingGroupKey];
+              existingSources.Add(source);
+              result.Remove(existingGroupKey);
+              result[bestMajorityName] = existingSources;
+            }
+            else
+            {
+              // Nope, just add the new source to this group
+              result[existingGroupKey].Add(source);
+            }
+          }
+        }
+        else
+        {
+          // Can't work out a group as there's no dashes - just add in the stripped tourney name.
+          result.AddOrAppend(source.StrippedTournamentName, source);
+        }
       }
       return result.ToImmutableSortedDictionary();
     }
@@ -745,13 +805,13 @@ namespace Mavis.SlappSupport
     /// Group the SimpleSource list for the specified sources/team/player by tourney name.
     /// Duplicates are removed.
     /// </summary>
-    private static List<string> GetGroupedSourcesText(IReadonlySourceable obj)
+    internal static List<string> GetGroupedSourcesText(IReadonlySourceable obj)
     {
       var groups = GetGroupedSources(obj);
       List<string> message = new();
-      foreach (var (tourney, simpleSources) in groups)
+      foreach (var (tourneyGroupName, simpleSources) in groups)
       {
-        string groupKey = string.IsNullOrEmpty(tourney) ? "" : tourney + ": ";
+        string groupKey = string.IsNullOrEmpty(tourneyGroupName) ? "" : tourneyGroupName + ": ";
         var groupValueArray = new HashSet<string>(string.IsNullOrEmpty(groupKey) ? simpleSources.Select(s => s.GetLinkedNameDisplay()) : simpleSources.Select(s => s.GetLinkedDateDisplay()));
         var orderedValues = new List<string>(groupValueArray).SortInline(reverse: true);
         var separator = string.IsNullOrEmpty(groupKey) ? "\n" : ", ";

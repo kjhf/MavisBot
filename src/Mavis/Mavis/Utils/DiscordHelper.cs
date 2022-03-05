@@ -99,27 +99,29 @@ namespace Mavis.Utils
     }
 
     /// <summary>
-    /// Return a markdown link with the truncated source date if available,
-    /// otherwise return its truncated_name only.
+    /// Return a markdown link with the <paramref name="source"/>'s Start time
+    /// as the text linked to the <see cref="BattlefyUri"/> if available,
+    /// otherwise returns its start time as text only.
+    /// If the start time isn't set, <see cref="GetLinkedNameDisplay"/> is used.
     /// </summary>
     public static string GetLinkedDateDisplay(this Source source)
     {
       var link = source.BattlefyUri;
-      string text;
       if (source.Start != Builtins.UnknownDateTime)
       {
-        text = source.Start.ToString("MMM yyyy");
+        string text = source.Start.ToString("MMM yyyy");
+        return string.IsNullOrEmpty(link) ? text : $"[{text}]({link})";
       }
       else
       {
-        text = source.StrippedTournamentName;
+        return GetLinkedNameDisplay(source);
       }
-      return string.IsNullOrEmpty(link) ? text : $"[{text}]({link})";
     }
 
     /// <summary>
-    /// Return a markdown link with the truncated source name (date-name) if available,
-    /// otherwise return its truncated_name only.
+    /// Return a markdown link with the <see cref="StrippedTournamentName"/> (tournament without id or date)
+    /// as the text linked to the <see cref="BattlefyUri"/> if available,
+    /// otherwise returns its StrippedTournamentName only.
     /// </summary>
     public static string GetLinkedNameDisplay(this Source source)
     {

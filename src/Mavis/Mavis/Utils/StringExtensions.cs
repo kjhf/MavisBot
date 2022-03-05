@@ -38,6 +38,23 @@ namespace Mavis.Utils
     }
 
     /// <summary>
+    /// Get the indexes of the character in the given string.
+    /// </summary>
+    public static IReadOnlyList<int> IndexOfAll(this string source, char toFind)
+    {
+      List<int> result = new();
+      for (int i = 0; i < source.Length; i++)
+      {
+        char c = source[i];
+        if (c.Equals(toFind))
+        {
+          result.Add(i);
+        }
+      }
+      return result;
+    }
+
+    /// <summary>
     /// Get whether this string contains or nearly contains another string.
     /// </summary>
     /// <param name="s">Object string</param>
@@ -648,7 +665,7 @@ namespace Mavis.Utils
     /// <summary>
     /// Append a plural suffix to a string if the <paramref name="collection"/>'s length is not 1.
     /// </summary>
-    public static string Plural<T>(this string str, ICollection<T> collection, string suffix = "s")
+    public static string Plural<T>(this string str, IReadOnlyCollection<T> collection, string suffix = "s")
       => Plural(str, collection.Count, suffix);
 
     /// <summary>

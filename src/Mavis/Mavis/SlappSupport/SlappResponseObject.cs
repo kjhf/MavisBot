@@ -15,8 +15,8 @@ namespace Mavis.SlappSupport
     private static readonly Logger log = LogManager.GetCurrentClassLogger();
     public readonly Player[] players;
     private readonly Dictionary<Guid, Team> teamsDict;
-    public ICollection<Team> Teams => teamsDict.Values;
-    private readonly SplatTagController splatTagController;
+    public IReadOnlyCollection<Team> Teams => teamsDict.Values;
+    private readonly ITeamResolver splatTagController;
     public readonly Dictionary<Guid, Dictionary<Source, Bracket[]>> placementsForPlayers = new();
 
     public bool HasPlayers => players.Length > 0;
@@ -24,7 +24,7 @@ namespace Mavis.SlappSupport
     public bool HasTeams => Teams.Count > 0;
     public bool HasTeamsPl => Teams.Count > 1;
 
-    public SlappResponseObject(Player[] players, Team[] teams, SplatTagController splatTagController)
+    public SlappResponseObject(Player[] players, Team[] teams, ITeamResolver splatTagController)
     {
       this.players = players;
       this.teamsDict = teams.ToDictionary(t => t.Id, t => t);

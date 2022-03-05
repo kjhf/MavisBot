@@ -117,6 +117,31 @@ namespace Mavis.Utils
     }
 
     /// <summary>
+    /// Adds an Discord.Embed field with the provided name and value, if the value is not null or whitespace.
+    /// Titles and values here are truncated to fit in the <see cref="DiscordLimits.FIELD_NAME_LIMIT"/> and <see cref="DiscordLimits.FIELD_VALUE_LIMIT"/>.
+    /// </summary>
+    /// <param name="name">The title of the field.</param>
+    /// <param name="value">The value of the field.</param>
+    /// <param name="inline">Indicates whether the field is in-line or not.</param>
+    /// <param name="defaultName">If the <paramref name="name"/> is null or empty, uses the default name instead.
+    /// <param name="truncationString">If the name or value is truncated, this string is the indicator for this.
+    /// This is as Discord does not allow field titles to be empty.</param>
+    /// <returns>The current builder.</returns>
+    public MavisEmbedBuilder ConditionallyAddField(
+      string name,
+      string? value,
+      bool inline = false,
+      string defaultName = "Unnamed",
+      string truncationString = "…")
+    {
+      if (!string.IsNullOrWhiteSpace(value))
+      {
+        AddField(name, value, inline, defaultName, truncationString);
+      }
+      return this;
+    }
+
+    /// <summary>
     /// Adds an Discord.Embed field with the provided name and value.
     /// Titles and values here are truncated to fit in the <see cref="DiscordLimits.FIELD_NAME_LIMIT"/> and <see cref="DiscordLimits.FIELD_VALUE_LIMIT"/>.
     /// </summary>
@@ -129,16 +154,16 @@ namespace Mavis.Utils
     /// This is as Discord does not allow field titles to be empty.</param>
     /// <returns>The current builder.</returns>
     public MavisEmbedBuilder AddField(
-      string name,
-      string value,
+      string? name,
+      string? value,
       bool inline = false,
       string defaultName = "Unnamed",
       string defaultValue = "(Nothing more to say)",
       string truncationString = "…")
     {
       builder.AddField(
-        name.Or(defaultName).Truncate(DiscordLimits.FIELD_NAME_LIMIT, truncationString),
-        value.Or(defaultValue).Truncate(FIELD_VALUE_LIMIT_WITH_BACKTICK_CHECK, truncationString).CloseBackticksIfUnclosed(),
+        name?.Or(defaultName).Truncate(DiscordLimits.FIELD_NAME_LIMIT, truncationString),
+        value?.Or(defaultValue).Truncate(FIELD_VALUE_LIMIT_WITH_BACKTICK_CHECK, truncationString).CloseBackticksIfUnclosed(),
         inline);
       return this;
     }

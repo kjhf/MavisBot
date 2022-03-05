@@ -174,11 +174,13 @@ namespace Mavis.Controllers
         return;
       }
 
+      /*
       foreach (var guild in this._client.Guilds)
       {
         try
         {
-          await guild.BulkOverwriteApplicationCommandAsync(_builtCommands).ConfigureAwait(false);
+          await guild.DeleteApplicationCommandsAsync().ConfigureAwait(false);
+          // await guild.BulkOverwriteApplicationCommandAsync(_builtCommands).ConfigureAwait(false);
         }
         catch (HttpException exception)
         {
@@ -192,6 +194,7 @@ namespace Mavis.Controllers
           log.Info(exception);
         }
       }
+      */
       //await _client.BulkOverwriteGlobalApplicationCommandsAsync(_builtCommands).ConfigureAwait(false);
       _client.JoinedGuild += Client_JoinedGuild;
     }
