@@ -198,8 +198,8 @@ namespace Mavis.Utils
       while (message < MAX_MESSAGES_TO_UNROLL)
       {
         // While the message is not in limits, or the removed fields has one field only (as the footer cannot be alone)
-        while (builder.Length > DiscordLimits.TOTAL_CHARACTER_LIMIT
-          || builder.Fields.Count > DiscordLimits.NUMBER_OF_FIELDS_LIMIT
+        while (builder.Length >= DiscordLimits.TOTAL_CHARACTER_LIMIT
+          || builder.Fields.Count >= DiscordLimits.NUMBER_OF_FIELDS_LIMIT
           || removedFields.Count == 1)
         {
           log.Debug($"Looping builder: builder.Length={builder.Length}, builder.Fields.Count={builder.Fields.Count}, removedFields.Count={removedFields.Count}");
@@ -210,7 +210,6 @@ namespace Mavis.Utils
           removedFields.Add(removed);
         }
 
-        // Don't think we should use the builder instance here - should smart build be a static/extension?
         if (builder.Length > 0)
         {
           result.Add(builder.Build());
@@ -222,10 +221,7 @@ namespace Mavis.Utils
           message++;
           removedFields.Reverse();
           builder = new EmbedBuilder().WithTitle("Page " + message).WithColor(colour).WithDescription("");
-          foreach (var field in removedFields)
-          {
-            builder.Fields.Add(field);
-          }
+          builder.Fields.AddRange(removedFields);
           removedFields.Clear();
         }
         else

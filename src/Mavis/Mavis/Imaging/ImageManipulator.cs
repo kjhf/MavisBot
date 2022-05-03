@@ -335,26 +335,26 @@ namespace Mavis.Imaging
 
     private static string GetAsciiChar(int redValue)
     {
-      switch (redValue)
+      return redValue switch
       {
-        case int testVal when testVal >= 250: return " ";
-        case int testVal when testVal >= 240: return ".";
-        case int testVal when testVal >= 230: return "'";
-        case int testVal when testVal >= 220: return "^";
-        case int testVal when testVal >= 200: return "\"";
-        case int testVal when testVal >= 180: return ":";
-        case int testVal when testVal >= 170: return ";";
-        case int testVal when testVal >= 160: return "!";
-        case int testVal when testVal >= 150: return "i";
-        case int testVal when testVal >= 140: return "~";
-        case int testVal when testVal >= 120: return "+";
-        case int testVal when testVal >= 100: return "o";
-        case int testVal when testVal >= 80: return "X";
-        case int testVal when testVal >= 60: return "#";
-        case int testVal when testVal >= 40: return "%";
-        case int testVal when testVal >= 20: return "@";
-        default: return "$";
-      }
+        >= 250 => " ",
+        >= 240 => ".",
+        >= 230 => "'",
+        >= 220 => "^",
+        >= 200 => "\"",
+        >= 180 => ":",
+        >= 170 => ";",
+        >= 160 => "!",
+        >= 150 => "i",
+        >= 140 => "~",
+        >= 120 => "+",
+        >= 100 => "o",
+        >= 80 => "X",
+        >= 60 => "#",
+        >= 40 => "%",
+        >= 20 => "@",
+        _ => "$",
+      };
     }
 
     /// <summary>

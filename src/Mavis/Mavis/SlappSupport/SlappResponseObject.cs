@@ -4,6 +4,7 @@ using SplatTagCore;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -58,8 +59,11 @@ namespace Mavis.SlappSupport
       return (this.splatTagController.GetTeamById(teamId, out team)) ? team : null;
     }
 
-    public IReadOnlyList<(Team, IReadOnlyList<Source>)> GetTeamsForPlayer(Player p)
-      => p.TeamInformation.GetTeamsSourcedUnordered().Select(pair => (GetTeam(pair.Key), pair.Value)).Where(pair => pair.Item1 != null).ToImmutableArray();
+    public (Team, ReadOnlyCollection<Source>)[] GetTeamsForPlayer(Player p)
+      => p.TeamInformation.GetAllTeamsOrdered()
+          .Select(pair => (GetTeam(pair.Key), pair.Value))
+          .Where(pair => pair.Item1 is not null).Select(pair => (pair.Item1!, pair.Value))
+          .ToArray();
 
     /// <summary>
     /// Get a yielded enumerable of placements for this player where the player has come in the given <paramref name="place"/> (1 by default for 1st).

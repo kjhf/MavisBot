@@ -6,6 +6,7 @@ using SplatTagCore;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
@@ -397,8 +398,8 @@ namespace Mavis.SlappSupport
         var did = profile.Value.EscapeCharacters();
         return $"{DISCORD} [{did}](https://discord.id/?prefill={did}) \n🦑 [Sendou](https://sendou.ink/u/{did})";
       }).ToArray();
-      string[] twitch = player.Twitch.Select(profile => $"{TWITCH} [{profile.Value.EscapeCharacters()}]({profile.Uri})").ToArray();
-      string[] twitter = player.Twitter.Select(profile => $"{TWITTER} [{profile.Value.EscapeCharacters()}]({profile.Uri})").ToArray();
+      string[] twitch = player.TwitchProfiles.Select(profile => $"{TWITCH} [{profile.Value.EscapeCharacters()}]({profile.Uri})").ToArray();
+      string[] twitter = player.TwitterProfiles.Select(profile => $"{TWITTER} [{profile.Value.EscapeCharacters()}]({profile.Uri})").ToArray();
       string countryFlag = (player.CountryFlag + " ").Or("");
       string top500 = player.Top500 ? (TOP_500 + " ") : "";
       string[] notableResults = GetFirstPlacementsText(r, player).ToArray();
@@ -524,12 +525,12 @@ namespace Mavis.SlappSupport
     private static void CalculateAddMatchedPlayerTeams(SlappResponseObject r, Player player, Dictionary<IEmote, IReadonlySourceable> reacts, out string currentTeam, out List<string> oldTeams)
     {
       // Current and old teams
-      IReadOnlyList<(Team teamForPlayer, IReadOnlyList<Source> teamSources)>? resolvedTeams = r.GetTeamsForPlayer(player);
+      (Team teamForPlayer, ReadOnlyCollection<Source> teamSources)[] resolvedTeams = r.GetTeamsForPlayer(player);
       currentTeam = "";
       oldTeams = new();
-      if (resolvedTeams.Count > 0)
+      if (resolvedTeams.Length > 0)
       {
-        const int TOURNEYS_TO_TAKE_FOR_PLAYER = 2;
+        const int TOURNEYS_TO_TAKE_FOR_PLAYER = 3;
         StringBuilder currentTeamBuilder = new();
 
         if (r.players.Length == 1)
@@ -558,7 +559,7 @@ namespace Mavis.SlappSupport
         currentTeam = currentTeamBuilder.ToString();
 
         // Old teams
-        if (resolvedTeams.Count > 1)
+        if (resolvedTeams.Length > 1)
         {
           var resolvedOldTeams = resolvedTeams.Skip(1);
 
@@ -607,8 +608,8 @@ namespace Mavis.SlappSupport
       foreach (var playerTuple in players)
       {
         const int NAMES_TO_TAKE = 9;
-        var p = playerTuple.Item1;
-        var inTeam = playerTuple.Item2;
+        var p = playerTuple.player;
+        var inTeam = playerTuple.mostRecent;
         string name = $"{p.Name.Value.Truncate(48).SafeBackticks()}";
         string aka = string.Join(", ", p.Names.Skip(1).Take(NAMES_TO_TAKE).Select(n => n.Value.Truncate(20))).ConditionalString(prefix: "_ᴬᴷᴬ_ ");
         bool andMore = p.Names.Count > (1 + NAMES_TO_TAKE);
