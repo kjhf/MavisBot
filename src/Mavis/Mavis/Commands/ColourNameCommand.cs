@@ -39,31 +39,23 @@ namespace Mavis.Commands
         return;
       }
 
-      DiscordColor discordColor;
-      string message;
-
-      if (ImageManipulator.FindHexColour(input, out string? foundColour))
+      var inputColour = ImageManipulator.FromString(input);
+      if (inputColour == null)
       {
-        DrawingColor color = ImageManipulator.FromHexCode(foundColour);
-        discordColor = new DiscordColor(color.R, color.G, color.B);
-
-        ConsoleColor nearestConsoleColor = color.ToConsoleColor();
-        KnownColor nearestKnownColor = color.ToNearestKnownColor();
-        message = (nearestKnownColor.ToString().Equals(nearestConsoleColor.ToString())) ? $"✓ It's {nearestKnownColor.ToString().ToTitleCase()}" : $"(~) It's near to {nearestKnownColor.ToString().ToTitleCase()}";
-        await command.RespondAsync(text: message, embed: new MavisEmbedBuilder(message, discordColor).BuildFirst(), ephemeral: false).ConfigureAwait(false);
-      }
-      else if (Enum.TryParse(input, true, out KnownColor knownColor))
-      {
-        var color = DrawingColor.FromKnownColor(knownColor);
-        discordColor = new DiscordColor(color.R, color.G, color.B);
-        message = $"✓ {knownColor}";
-        await command.RespondAsync(text: message, embed: new MavisEmbedBuilder(message, discordColor).BuildFirst(), ephemeral: false).ConfigureAwait(false);
+        const string message = "❌ I don't understand your input.";
+        await command.RespondAsync(message, ephemeral: true).ConfigureAwait(false);
       }
       else
       {
-        const string err = "❌ I don't understand your input.";
-        await command.RespondAsync(err, ephemeral: true).ConfigureAwait(false);
-        return;
+        DrawingColor color = inputColour.Value;
+        DiscordColor discordColor = color.ToDiscordColor();
+        ConsoleColor nearestConsoleColor = color.ToConsoleColor();
+        KnownColor nearestKnownColor = color.ToNearestKnownColor();
+
+        string colourString = nearestKnownColor.ToString().ToTitleCase();
+        bool isExact = (nearestKnownColor.ToString().Equals(nearestConsoleColor.ToString()));
+        string message = isExact ? $"✓ It's {colourString}" : $"(~) It's near to {colourString}";
+        await command.RespondAsync(text: message, embed: new MavisEmbedBuilder(message, discordColor).BuildFirst(), ephemeral: false).ConfigureAwait(false);
       }
     }
   }

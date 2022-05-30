@@ -127,6 +127,29 @@ namespace Mavis.Utils
     {
       var link = source.BattlefyUri;
       string text = source.StrippedTournamentName;
+      // If the source is low ink, also append the group A/B label
+      if (text.Contains("low-ink"))
+      {
+        string? groupLabel = null;
+        foreach (var bracket in source.Brackets.Select(b => b.Name))
+        {
+          if (bracket.Contains("Group A"))
+          {
+            groupLabel = "A";
+            break;
+          }
+          else if (bracket.Contains("Group B"))
+          {
+            groupLabel = "B";
+            break;
+          }
+        }
+        
+        if (groupLabel != null)
+        {
+          text += $" {{Group {groupLabel}}}";
+        }
+      }
       return string.IsNullOrEmpty(link) ? text : $"[{text}]({link})";
     }
 

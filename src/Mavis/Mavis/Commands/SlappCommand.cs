@@ -36,7 +36,12 @@ namespace Mavis.Commands
 
         try
         {
-          var (splatTagController, _) = SplatTagControllerFactory.CreateController(saveFolder: slappFolder);
+          var splatTagController = SplatTagControllerFactory.CreateControllerNoLoad(saveFolder: slappFolder);
+          if (!splatTagController.Initialise())
+          {
+            throw new Exception("Failed to initialise the SplatTagController. Check database?");
+          }
+          
           slappCommandHandler = new SlappCommandHandler(splatTagController);
           log.Trace("Created SplatTagController");
 

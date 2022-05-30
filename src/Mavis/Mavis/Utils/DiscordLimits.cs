@@ -9,7 +9,7 @@ namespace Mavis.Utils
   {
     public const int TITLE_LIMIT = EmbedBuilder.MaxTitleLength;
     public const int DESCRIPTION_LIMIT = EmbedBuilder.MaxDescriptionLength;
-    public const int NUMBER_OF_FIELDS_LIMIT = EmbedBuilder.MaxFieldCount;
+    public const int NUMBER_OF_FIELDS_LIMIT = EmbedBuilder.MaxFieldCount - 1;
     public const int FIELD_NAME_LIMIT = EmbedFieldBuilder.MaxFieldNameLength;
     public const int FIELD_VALUE_LIMIT = EmbedFieldBuilder.MaxFieldValueLength;
     public const int FOOTER_TEXT_LIMIT = EmbedFooterBuilder.MaxFooterTextLength;

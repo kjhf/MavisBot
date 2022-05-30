@@ -1,4 +1,5 @@
 ﻿using Discord;
+using Mavis.Imaging;
 using NLog;
 using System;
 using System.Collections.Generic;
@@ -281,6 +282,16 @@ namespace Mavis.Utils
     public MavisEmbedBuilder WithColor(int r, int g, int b)
     {
       builder.WithColor(r, g, b);
+      return this;
+    }
+
+    /// <summary>
+    /// Sets the sidebar colour of an Discord.Embed to a random colour.
+    /// </summary>
+    /// <returns>The current builder.</returns>
+    public MavisEmbedBuilder WithRandomColor()
+    {
+      builder.WithColor(ImageManipulator.GetRandomColor().ToDiscordColor());
       return this;
     }
 

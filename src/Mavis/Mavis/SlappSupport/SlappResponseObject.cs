@@ -60,10 +60,11 @@ namespace Mavis.SlappSupport
     }
 
     public (Team, ReadOnlyCollection<Source>)[] GetTeamsForPlayer(Player p)
-      => p.TeamInformation.GetAllTeamsOrdered()
+      => p.TeamInformation?.GetAllTeamsOrdered()
           .Select(pair => (GetTeam(pair.Key), pair.Value))
           .Where(pair => pair.Item1 is not null).Select(pair => (pair.Item1!, pair.Value))
-          .ToArray();
+          .ToArray()
+      ?? Array.Empty<(Team, ReadOnlyCollection<Source>)>();
 
     /// <summary>
     /// Get a yielded enumerable of placements for this player where the player has come in the given <paramref name="place"/> (1 by default for 1st).
@@ -182,8 +183,14 @@ namespace Mavis.SlappSupport
         // and if these teams got the same result, then we need to filter out teams that the player is not associated with for this tourney (this is the Source check).
         // This does not cover the case where the player has played for multiple teams in this tournament (e.g. is a sub),
         // AND the teams have a tied final place, as we ultimately would end up with both teams in this result.
-        var playerTeams = p.TeamInformation.GetTeamsSourcedUnordered().Where(pair => pair.Value.Contains(s)).Where(playerTeamPair => teams.Contains(playerTeamPair.Key));
-        return playerTeams?.Any() == true ? GetTeam(playerTeams.First().Key) : null;
+        if (p.TeamInformation != null)
+        {
+          var playerTeams =
+            p.TeamInformation.GetTeamsSourcedUnordered()
+            .Where(pair => pair.Value.Contains(s))
+            .Where(playerTeamPair => teams.Contains(playerTeamPair.Key));
+          return playerTeams?.Any() == true ? GetTeam(playerTeams.First().Key) : null;
+        }
       }
       // else
       return (teams == null || teams.Length < 1) ? null : GetTeam(teams[0]);

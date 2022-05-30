@@ -3,6 +3,7 @@ using Discord.WebSocket;
 using Mavis.Utils;
 using NLog;
 using SplatTagCore;
+using SplatTagCore.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -93,8 +94,16 @@ namespace Mavis.SlappSupport
 
       Dictionary<string, object> commandParams = command.Data.Options.ToDictionary(kv => kv.Name, kv => kv.Value);
       log.Info($"Processing Slapp Command {command.AsCommandString()}");
-
-      SplatTagController.Verbose = commandParams.GetWithConversion("--verbose", false);
+      
+      bool verbose = commandParams.GetWithConversion("--verbose", false);
+      if (verbose)
+      {
+        SplatTagDatabase.SplatTagControllerFactory.SetNLogLevel(LogLevel.Trace);
+      }
+      else
+      {
+        SplatTagDatabase.SplatTagControllerFactory.SetNLogLevel(LogLevel.Info);
+      }
       string query = commandParams.GetWithConversion("query", "");
 
       var options = new MatchOptions
@@ -392,7 +401,7 @@ namespace Mavis.SlappSupport
           .Truncate(1000, "…\n```\n")
         : "";
 
-      string[] battlefy = player.Battlefy.Slugs.Select(profile => $"{BATTLEFY} [{profile.Value.EscapeCharacters()}]({profile.Uri})").ToArray();
+      string[] battlefy = player.BattlefySlugsOrdered.Select(profile => $"{BATTLEFY} [{profile.Value.EscapeCharacters()}]({profile.Uri})").ToArray();
       string[] discord = player.DiscordIds.Select(profile =>
       {
         var did = profile.Value.EscapeCharacters();
@@ -412,7 +421,7 @@ namespace Mavis.SlappSupport
       {
         builder.AddField(fieldHead, otherNames, defaultName: "(Unnamed Player)", defaultValue: "(No other names)");
 
-        var fcsLength = player.FCInformation.Count;
+        var fcsLength = player.FCs.Count;
         builder.AddField("FCs:", $"{fcsLength} known friend code".Plural(fcsLength));
 
         if (currentTeam?.Length > 0)
@@ -441,7 +450,7 @@ namespace Mavis.SlappSupport
           builder.AddUnrolledList("Notable Wins", notableResultLines);
         }
 
-        builder.ConditionallyAddUnrolledList("Weapons", player.Weapons, separator: ", ");
+        builder.ConditionallyAddUnrolledList("Weapons", player.Weapons.ToArray(), separator: ", ");
 
         // Add Skill/Clout here
 
@@ -467,7 +476,7 @@ namespace Mavis.SlappSupport
           notableResultsStr += string.Join("\n", notableResults.Select(result => $"🏆 Won {result}")).ConditionalString(suffix: "\n");
         }
 
-        int fcsLength = player.FCInformation.Count;
+        int fcsLength = player.FCs.Count;
         string fcsStr = fcsLength > 0 ? ($"{fcsLength} known friend code".Plural(fcsLength) + "\n") : "";
         string oldTeamsStr = string.Join("\n", oldTeams)
           .ConditionalString(prefix: "Old teams:\n", suffix: "\n")

@@ -173,7 +173,6 @@ namespace Mavis.Controllers
         log.Info(exception);
         return;
       }
-
       /*
       foreach (var guild in this._client.Guilds)
       {
@@ -195,7 +194,7 @@ namespace Mavis.Controllers
         }
       }
       */
-      //await _client.BulkOverwriteGlobalApplicationCommandsAsync(_builtCommands).ConfigureAwait(false);
+      await _client.BulkOverwriteGlobalApplicationCommandsAsync(_builtCommands).ConfigureAwait(false);
       _client.JoinedGuild += Client_JoinedGuild;
     }
 

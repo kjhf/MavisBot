@@ -68,6 +68,9 @@ namespace Mavis.Utils
           : choices[random.Next(choices.Count)];
     }
 
+    public static T? Choice<T>(this Random random, IEnumerable<T> choices)
+      => random.Choice(choices, Enumerable.Repeat(1, choices.Count()));
+
     public static T? Choice<T>(this Random random, IEnumerable<T> choices, IEnumerable<int> weights)
     {
       var cumulativeWeight = new List<int>();

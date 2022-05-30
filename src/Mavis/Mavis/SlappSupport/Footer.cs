@@ -35,22 +35,24 @@ namespace Mavis.SlappSupport
       "You're looking very dapper today. ",
       " ✨ JACKPOT WINNER! ✨ ",
       "Oh, you do read these! ",
+      "Team sausage dog! ",
 
       // LGBT+
       "Be gay! Do crimes! ",
       "Rule 1: don't be a dick! ",
-      "Imagine a computer program to be non-binary. Haha. ",
+      "Imagine a computer program to be non-binary... Introducing qubits. ",
       "Trans rights! ",
       "BLM! ",
       "Ewww cooties. ",
-      "Skirt go spinny. ",
       "Programming socks ON. ",
+      "Modern medicine is amazing! ",
+      "Why don't you take me down to Funky Town? ",
 
       // Splatoon and tournament shout-outs
       "You should Step Up, Europe. ",
       "Play LowInk. ",
       "Thank your TOs. ",
-      "#SaveMelee ",
+      "#SaveMelee. ",
       "A Minnow is a small freshwater fish and also a tourney that you should join. ",
       "SPLATOON 3! ",
       "Please don't enter entire song lyrics as your name. ",
@@ -102,6 +104,9 @@ namespace Mavis.SlappSupport
       "There's a time and place for everything, but not now. ",
       "*You hear villagers, but can only make out heuurrgghh sounds* ",
       "Would you like some pigeon milk with that? ",
+      "Can I solo this? ",
+      "Scone is pronounced SCONE. ",
+      "Oh! You startled me! ",
 
       // TV, Film, and Music references
       "Orange is the new black. ",
@@ -122,6 +127,7 @@ namespace Mavis.SlappSupport
       "Honey honey, how you thrill me... ",
       "I'm high on believing! That you're in love with me! ",
       "Got a one-way ticket to hell and back! ",
+      "I'm a little teapot. ",
       "You'll never know, dear, how much I love you. ",
       "I'm sorry, Dave, but I'm afraid I can't do that. ",
       "We're off to see the wizard! ",
@@ -129,6 +135,9 @@ namespace Mavis.SlappSupport
       "Daddy... daddy coooool. ",
       "It's a kinda magic. ",
       "Spider-pig, spider-pig, does whatever a spider-pig does... ",
+      "These are crazy crazy crazy crazy nights! ",
+      "I only think in the form of crunching numbers. ",
+      "I'm picking up good vibrations 📳 ",
 
       // Streamer parodies (YouTubers and Twitch)
       "We BOUNCE THAT BOI ",
