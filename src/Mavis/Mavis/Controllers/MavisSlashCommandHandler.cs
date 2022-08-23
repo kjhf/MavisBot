@@ -155,7 +155,7 @@ namespace Mavis.Controllers
 
       if (this._client.Guilds.Count == 0)
       {
-        log.Error("No guilds have been loaded to initialise the slash commands. Check OnReady.");
+        log.Error($"No guilds have been loaded to initialise the slash commands. Check OnReady. (The invite link is: {Constants.BotInviteLink} )");
       }
 
       if (this._commands.Length == 0)

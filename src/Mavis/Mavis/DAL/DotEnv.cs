@@ -6,12 +6,13 @@ namespace Mavis.DAL
 {
   public static class DotEnv
   {
+    public static string DotEnvFileName { get; set; } = ".env";
     private static readonly Logger log = LogManager.GetCurrentClassLogger();
 
     public static void Load()
     {
       var dir = Directory.GetCurrentDirectory();
-      string? dotenv = Path.Combine(dir, ".env");
+      string? dotenv = Path.Combine(dir, DotEnvFileName);
       if (File.Exists(dotenv))
       {
         Load(dotenv);
@@ -21,7 +22,7 @@ namespace Mavis.DAL
         do
         {
           dir = Directory.GetParent(dir)?.FullName;
-          dotenv = Path.Combine(dir ?? "", ".env");
+          dotenv = Path.Combine(dir ?? "", DotEnvFileName);
         }
         while (!File.Exists(dotenv) && dir != null);
         Load(dotenv);
@@ -32,11 +33,11 @@ namespace Mavis.DAL
     {
       if (filePath == null || !File.Exists(filePath))
       {
-        log.Warn(".env file not found.");
+        log.Warn(DotEnvFileName + " file not found.");
       }
       else
       {
-        log.Debug(".env file: " + filePath);
+        log.Debug(DotEnvFileName + " file: " + filePath);
         foreach (var line in File.ReadAllLines(filePath))
         {
           var parts = line.Split(

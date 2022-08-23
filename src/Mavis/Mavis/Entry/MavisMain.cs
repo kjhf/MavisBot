@@ -16,8 +16,21 @@ public static class MavisMain
   public static async Task Main(string[] args)
   {
     ConfigureNLog();
+#if DEBUG
+    const bool isDebug = true;
+#else
+    const bool isDebug = false;
+#endif
+    if (isDebug || Debugger.IsAttached)
+    {
+      DotEnv.DotEnvFileName = "debug.env";
+      Console.Title = Constants.DebugProgramName;
+    }
+    else
+    {
+      Console.Title = Constants.ProgramName;
+    }
     DotEnv.Load();
-    Console.Title = Constants.ProgramName;
 
     try
     {

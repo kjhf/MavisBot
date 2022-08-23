@@ -60,12 +60,28 @@ namespace Mavis.Controllers
       {
         if (ulong.TryParse(logChannelStr, out ulong logChannelULong))
         {
-          logChannel = (ITextChannel)await this._client.GetChannelAsync(logChannelULong);
-          log.Info($"✔ Log channel set to {logChannelStr}");
+          try
+          {
+            logChannel = await this._client.GetChannelAsync(logChannelULong) as ITextChannel;
+          }
+          catch (Exception ex)
+          {
+            log.Error(ex, "Exception thrown getting the logging channel: ");
+            log.Error(ex.ToString());
+          }
+
+          if (logChannel == null)
+          {
+            log.Warn($"X Log channel defined as {logChannelULong} but the ITextChannel was not found. Is the channel accessible?");
+          }
+          else
+          {
+            log.Info($"✔ Log channel set to {logChannelStr}");
+          }
         }
         else
         {
-          log.Error($"Log channel was found in the env variable LOGS_CHANNEL but is not an id: {logChannelStr}");
+          log.Error($"Log channel was found in the env variable LOGS_CHANNEL but is not a ulong: {logChannelStr}");
         }
       }
       else
@@ -86,11 +102,19 @@ namespace Mavis.Controllers
 
       _ = Task.Run(async () =>
       {
-        // Set the bot's presence based on the running mode
-        await this._client.SetGameAsync(presence).ConfigureAwait(false);
+        try
+        {
+          // Set the bot's presence based on the running mode
+          await this._client.SetGameAsync(presence).ConfigureAwait(false);
 
-        // Asynchronously initialize the commands
-        await InitCommands().ConfigureAwait(false);
+          // Asynchronously initialize the commands
+          await InitCommands().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+          log.Error(ex, "Ready initialization threw an exception");
+          log.Error(ex.ToString());
+        }
       });
 
       log.Debug($"...exiting ready handler as {this._client.CurrentUser.Username} ({this._client.CurrentUser.Id}).");
