@@ -70,7 +70,8 @@ namespace Mavis.Utils
     /// <param name="maxUnrolls">The maximum number of fields to add. Will max out at <see cref="DiscordLimits.NUMBER_OF_FIELDS_LIMIT"/>.</param>
     public MavisEmbedBuilder AddUnrolledList(string fieldHeader, IReadOnlyList<string> fieldValues, string separator = "\n", int maxUnrolls = DiscordLimits.NUMBER_OF_FIELDS_LIMIT)
     {
-      maxUnrolls = Math.Min(maxUnrolls, DiscordLimits.NUMBER_OF_FIELDS_LIMIT);
+      // Do not exceed the NUMBER_OF_FIELDS_LIMIT and take note of current fields already added
+      maxUnrolls = Math.Min(maxUnrolls, DiscordLimits.NUMBER_OF_FIELDS_LIMIT) - this.builder.Fields.Count;
       if (fieldValues.Count > 0)
       {
         for (int batch = 0; batch < maxUnrolls; batch++)
@@ -100,7 +101,10 @@ namespace Mavis.Utils
           fieldValues = fieldValues.Skip(Math.Min(valuesLength, j + 1)).ToArray();
           var noMore = fieldValues.Count == 0;
           var onlyField = noMore && batch == 0;
-          var header = onlyField ? $"{fieldHeader}:" : $"{fieldHeader} ({batch + 1}):";
+          var fieldsTruncated = !noMore && (batch + 1 == maxUnrolls);
+          var header = onlyField ? $"{fieldHeader}" : $"{fieldHeader} ({batch + 1})";
+          header += fieldsTruncated ? " (and more!):" : ":";
+
           AddField(
             name: header,
             value: thisBatchMessage,
