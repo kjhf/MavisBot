@@ -1,55 +1,60 @@
 ﻿using Newtonsoft.Json;
 using System;
 using System.IO;
-using System.Net;
 using System.Net.Http;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace Mavis.Utils
 {
-  public static class WebHelper
+  public static partial class WebHelper
   {
-    private static WebClient? _client;
-    private static WebClient WebClient => _client ??= new WebClient { Encoding = Encoding.UTF8 };
+    private static HttpClient HttpClient { get; } = new HttpClient();
 
     /// <summary>
     /// Simple URL string match
     /// </summary>
-    public static readonly Regex URL_REGEX = new Regex(@"(www|http:|https:)+[^\s]+[\w]", RegexOptions.IgnoreCase | RegexOptions.Compiled | RegexOptions.Multiline);
+    public static readonly Regex URL_REGEX = UrlRegex();
 
     /// <summary>
     /// Get JSON from a website and optionally specify the cookie headers.
     /// </summary>
-    /// <param name="website"></param>
-    /// <param name="cookies"></param>
-    /// <returns></returns>
     public static async Task<object?> GetJsonAsync(string website, string? cookies = null)
     {
       if (cookies != null)
       {
-        WebClient.Headers.Add(HttpRequestHeader.Cookie, cookies);
+        HttpClient.DefaultRequestHeaders.Add("Cookie", cookies);
       }
 
-      Uri uri = new Uri(website);
-      string value = await WebClient.DownloadStringTaskAsync(uri).ConfigureAwait(false);
-      return JsonConvert.DeserializeObject(value);
+      HttpResponseMessage response = await HttpClient.GetAsync(website).ConfigureAwait(false);
+      response.EnsureSuccessStatusCode();
+
+      string json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+      return JsonConvert.DeserializeObject(json);
     }
 
     /// <summary>
     /// Download text from a website synchronously.
+    /// Call GetTextAsync where possible to avoid deadlocks.
     /// </summary>
-    /// <param name="website"></param>
-    /// <returns></returns>
-    public static string GetText(string website) => WebClient.DownloadString(new Uri(website));
+    public static string GetText(string website)
+    {
+      HttpResponseMessage response = HttpClient.GetAsync(website).Result;
+      response.EnsureSuccessStatusCode();
+
+      return response.Content.ReadAsStringAsync().Result;
+    }
 
     /// <summary>
     /// Download text from a website asynchronously.
     /// </summary>
-    /// <param name="website"></param>
-    /// <returns></returns>
-    public static async Task<string> GetTextAsync(string website) => await WebClient.DownloadStringTaskAsync(new Uri(website)).ConfigureAwait(false);
+    public static async Task<string> GetTextAsync(string website)
+    {
+      HttpResponseMessage response = await HttpClient.GetAsync(website).ConfigureAwait(false);
+      response.EnsureSuccessStatusCode();
+
+      return await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+    }
 
     /// <summary>
     /// Download a file from the given URL. Optionally specify the maximum size to download (default is 4MB).
@@ -89,32 +94,19 @@ namespace Mavis.Utils
     }
 
     /// <summary>
-    /// Return if the url is an image (jpeg, jpg, png, tff, gif) or the content type starts with image/
+    /// Return if the url is an image (content type's media is an image/)
     /// </summary>
-    /// <param name="URL"></param>
-    /// <returns></returns>
-    public static bool IsImageUrl(string URL)
+    public static async Task<bool> IsImageUrlAsync(string URL)
     {
-      // First check the URL extension ending
-      if (URL.Length > 4)
-      {
-        string urlExtension = URL.Substring(URL.Length - 5).ToLowerInvariant();
-        if (urlExtension.EndsWith(".jpeg") || URL.EndsWith(".jpg") || URL.EndsWith(".png") || URL.EndsWith(".tff") || URL.EndsWith(".gif"))
-        {
-          return true;
-        }
-      }
+      HttpRequestMessage request = new(HttpMethod.Head, URL);
+      HttpResponseMessage response = await HttpClient.SendAsync(request).ConfigureAwait(false);
+      response.EnsureSuccessStatusCode();
 
-      // If ambiguous, make a request to ask the type of the page.
-      var req = (HttpWebRequest)WebRequest.Create(URL);
-      req.Method = "HEAD";
-      req.AllowAutoRedirect = true;
-      req.Timeout = 3000;
-      using (var resp = req.GetResponse())
-      {
-        string contentType = resp.ContentType;
-        return contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase) || contentType.Equals("jpeg") || contentType.Equals("png");
-      }
+      string? contentType = response.Content.Headers.ContentType?.MediaType;
+      return contentType?.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == true;
     }
+
+    [GeneratedRegex("(www|http:|https:)+[^\\s]+[\\w]", RegexOptions.IgnoreCase | RegexOptions.Multiline | RegexOptions.Compiled, "en-GB")]
+    private static partial Regex UrlRegex();
   }
 }

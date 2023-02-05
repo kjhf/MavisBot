@@ -48,7 +48,7 @@ namespace Mavis.Commands
         try
         {
           // Check if the url is a file
-          if (WebHelper.IsImageUrl(url))
+          if (await WebHelper.IsImageUrlAsync(url))
           {
             // It is, download and perform meme
             var tuple = await WebHelper.DownloadFile(url).ConfigureAwait(false);
