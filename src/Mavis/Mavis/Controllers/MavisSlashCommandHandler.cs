@@ -1,9 +1,7 @@
 ﻿using Discord;
-using Discord.Net;
 using Discord.WebSocket;
 using Mavis.Commands;
 using Mavis.Utils;
-using Newtonsoft.Json;
 using NLog;
 using System;
 using System.Collections.Generic;

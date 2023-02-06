@@ -1,11 +1,11 @@
 ﻿using Discord;
 using Discord.WebSocket;
 using Mavis.Utils;
-using Newtonsoft.Json.Linq;
 using NLog;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Mavis.Commands
@@ -38,49 +38,44 @@ namespace Mavis.Commands
 
     public PullImageCommand()
     {
-      List<PullImageSubCommand> toAdd = new();
-      toAdd.Add(
+      List<PullImageSubCommand> toAdd = new()
+      {
         new PullImageSubCommand(subCommand: new SlashCommandBuilder().WithName("bird").WithDescription("Birb."),
           url: "https://some-random-api.ml/img/birb/",
           formattedResponseURL: "%file%",
           jsonProperty: "link",
-          isPrivate: false)
-      );
-      toAdd.Add(
+          isPrivate: false),
+
         new PullImageSubCommand(subCommand: new SlashCommandBuilder().WithName("cat").WithDescription("Cat."),
           url: "http://aws.random.cat/meow",
           formattedResponseURL: "%file%",
           jsonProperty: "file",
-          isPrivate: false)
-      );
-      toAdd.Add(
+          isPrivate: false),
+
         new PullImageSubCommand(subCommand: new SlashCommandBuilder().WithName("dog").WithDescription("Dog."),
           url: "https://random.dog/woof.json",
           formattedResponseURL: "%file%",
           jsonProperty: "url",
-          isPrivate: false)
-      );
-      toAdd.Add(
+          isPrivate: false),
+
         new PullImageSubCommand(subCommand: new SlashCommandBuilder().WithName("fox").WithDescription("Fox."),
           url: "https://some-random-api.ml/animal/fox",
           formattedResponseURL: "%file%",
           jsonProperty: "image",
-          isPrivate: false)
-      );
-      toAdd.Add(
+          isPrivate: false),
+
         new PullImageSubCommand(subCommand: new SlashCommandBuilder().WithName("neko").WithDescription("Privately gets a Neko image."),
           url: "https://nekos.life/api/neko",
           formattedResponseURL: "%file%",
           jsonProperty: "neko",
-          isPrivate: true)
-      );
-      toAdd.Add(
+          isPrivate: true),
+
         new PullImageSubCommand(subCommand: new SlashCommandBuilder().WithName("panda").WithDescription("Panda."),
           url: "https://some-random-api.ml/animal/panda",
           formattedResponseURL: "%file%",
           jsonProperty: "image",
           isPrivate: false)
-      );
+      };
       subCommands = toAdd.ToDictionary(pair => pair.subCommand.Name, pair => pair);
     }
 
@@ -93,12 +88,12 @@ namespace Mavis.Commands
     {
       log.Trace($"Processing {nameof(PullImageCommand)} {name}.");
       var subCommand = subCommands[name];
-      JContainer? json;
+      JsonElement? json;
       string? message = null;
 
       try
       {
-        json = (JContainer?)await JSONHelper.GetJsonAsync(subCommand.url).ConfigureAwait(false);
+        json = (JsonElement?)await JSONHelper.GetJsonAsync(subCommand.url).ConfigureAwait(false);
       }
       catch (Exception ex)
       {
@@ -107,9 +102,17 @@ namespace Mavis.Commands
       }
 
       string? file = null;
-      if (json != null)
+      if (json.HasValue)
       {
-        file = subCommand.formattedResponseURL.Replace("%file%", json[subCommand.jsonProperty]?.ToString());
+        var jsonElement = json.Value;
+        if (jsonElement.TryGetProperty(subCommand.jsonProperty, out var fileProperty))
+        {
+          file = subCommand.formattedResponseURL.Replace("%file%", fileProperty.GetString());
+        }
+        else
+        {
+          message = ($"⛔ The file property `{subCommand.jsonProperty}` was not found in the response.");
+        }
         message = file;
       }
 

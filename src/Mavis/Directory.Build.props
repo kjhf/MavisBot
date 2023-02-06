@@ -1,0 +1,5 @@
+<Project>
+  <PropertyGroup>
+    <Copyright>Slate says hi :) Build date: ($([System.DateTime]::UtcNow.ToString("s"))); Framework: ($([System.Runtime.InteropServices.RuntimeInformation]::FrameworkDescription.ToString()))</Copyright>
+  </PropertyGroup>
+</Project>

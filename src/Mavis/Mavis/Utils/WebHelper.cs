@@ -1,7 +1,7 @@
-﻿using Newtonsoft.Json;
-using System;
+﻿using System;
 using System.IO;
 using System.Net.Http;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
@@ -30,7 +30,7 @@ namespace Mavis.Utils
       response.EnsureSuccessStatusCode();
 
       string json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-      return JsonConvert.DeserializeObject(json);
+      return JsonSerializer.Deserialize<JsonElement>(json);
     }
 
     /// <summary>

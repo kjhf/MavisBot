@@ -1,12 +1,12 @@
 ﻿using Discord;
 using Discord.WebSocket;
 using Mavis.Utils;
-using Newtonsoft.Json.Linq;
 using NLog;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Mavis.Commands
@@ -60,12 +60,12 @@ namespace Mavis.Commands
         + $"&q={query}";
       log.Trace(request);
 
-      JContainer? json;
+      JsonElement? json;
       string? message = null;
 
       try
       {
-        json = (JContainer?)await JSONHelper.GetJsonAsync(request).ConfigureAwait(false);
+        json = (JsonElement?)await JSONHelper.GetJsonAsync(request).ConfigureAwait(false);
       }
       catch (Exception ex)
       {
@@ -73,11 +73,11 @@ namespace Mavis.Commands
         message = ("⛔ Couldn't reach the server: " + ex.Message);
       }
 
-      if (json != null)
+      if (json.HasValue)
       {
         try
         {
-          dynamic? outer = json[0];
+          dynamic? outer = json.Value[0];
           if (outer?.Count > 0)
           {
             StringBuilder translation = new();
