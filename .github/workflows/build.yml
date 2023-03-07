@@ -1,0 +1,52 @@
+name: Build and test project
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: recursive
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: 6.0.x
+    
+    - name: Restore dependencies
+      working-directory: ./src/Mavis
+      run: dotnet restore
+    - name: Build
+      working-directory: ./src/Mavis
+      run: dotnet build --no-restore --configuration Release
+    - name: Test
+      working-directory: ./src/Mavis
+      run: dotnet test --no-build --verbosity normal --configuration Release
+    
+    - name: Pack release
+      working-directory: ./src/Mavis/Mavis/bin/Release/net5.0
+      run: tar -czf ../Release.tar.gz .
+    
+    - uses: actions/upload-artifact@v3
+      name: Upload artifact
+      with:
+        path: src/Mavis/Mavis/bin/Release/Release.tar.gz
+        name: Release.tar.gz
+    
+    - name: Upload to hosting
+      working-directory: ./src/Mavis/Mavis/bin/Release
+      # only run on push, don't want a pull request slipping into the server
+      if: github.event_name == 'push'
+      # add ?restart=true to the url to automatically restart the bot
+      run: |
+        curl -i \
+        -H "Authorization: ${{ secrets.HOSTINGTOKEN }}" \
+        -F update=@Release.tar.gz \
+        https://hosting.fumple.pl/api/sv1/update
