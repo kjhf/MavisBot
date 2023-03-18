@@ -5,9 +5,9 @@ VisualStudioVersion = 17.0.32112.339
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Mavis", "Mavis\Mavis.csproj", "{043D0C17-D502-43F9-9726-8236ABF712D0}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SplatTagCore", "..\..\..\SplatTag\SplatTagCore\SplatTagCore.csproj", "{5331CDF1-FB67-4011-A79B-6F7548010A05}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SplatTagCore", "..\..\SplatTag\SplatTagCore\SplatTagCore.csproj", "{5331CDF1-FB67-4011-A79B-6F7548010A05}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SplatTagDatabase", "..\..\..\SplatTag\SplatTagDatabase\SplatTagDatabase.csproj", "{5A803ECB-5F14-4ECC-A040-2DBBE652FA8A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SplatTagDatabase", "..\..\SplatTag\SplatTagDatabase\SplatTagDatabase.csproj", "{5A803ECB-5F14-4ECC-A040-2DBBE652FA8A}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MavisTests", "MavisTests\MavisTests.csproj", "{36A5D4BE-8115-4404-8A85-A87C76AFA08D}"
 EndProject

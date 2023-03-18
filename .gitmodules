@@ -1,0 +1,3 @@
+[submodule "SplatTag"]
+	path = SplatTag
+	url = https://github.com/kjhf/SplatTag
