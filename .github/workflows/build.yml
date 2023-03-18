@@ -46,8 +46,7 @@ jobs:
       if: github.event_name == 'push'
       # add ?restart=true to the url to automatically restart the bot
       run: |
-        curl -i \
+        curl -i --fail-with-body \
         -H "Authorization: ${{ secrets.HOSTINGTOKEN }}" \
         -F update=@Release.tar.gz \
-        https://hosting.fumple.pl/api/sv1/update || \
-        { echo "::error::Failed to upload to hosting.fumple.pl!" && exit 1; }
+        https://hosting.fumple.pl/api/sv1/update
