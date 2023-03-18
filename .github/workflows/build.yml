@@ -49,4 +49,5 @@ jobs:
         curl -i \
         -H "Authorization: ${{ secrets.HOSTINGTOKEN }}" \
         -F update=@Release.tar.gz \
-        https://hosting.fumple.pl/api/sv1/update || { echo "::error::Failed to upload to hosting.fumple.pl!" && exit 1 }
+        https://hosting.fumple.pl/api/sv1/update || \
+        { echo "::error::Failed to upload to hosting.fumple.pl!" && exit 1; }
