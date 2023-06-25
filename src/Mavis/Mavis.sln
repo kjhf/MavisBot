@@ -5,11 +5,11 @@ VisualStudioVersion = 17.0.32112.339
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Mavis", "Mavis\Mavis.csproj", "{043D0C17-D502-43F9-9726-8236ABF712D0}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SplatTagCore", "..\..\SplatTag\SplatTagCore\SplatTagCore.csproj", "{5331CDF1-FB67-4011-A79B-6F7548010A05}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MavisTests", "MavisTests\MavisTests.csproj", "{36A5D4BE-8115-4404-8A85-A87C76AFA08D}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SplatTagDatabase", "..\..\SplatTag\SplatTagDatabase\SplatTagDatabase.csproj", "{5A803ECB-5F14-4ECC-A040-2DBBE652FA8A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SplatTagCore", "..\..\SplatTag\SplatTagCore\SplatTagCore.csproj", "{9E40CEB9-0F46-4893-BDAF-E0358AE7015F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MavisTests", "MavisTests\MavisTests.csproj", "{36A5D4BE-8115-4404-8A85-A87C76AFA08D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SplatTagDatabase", "..\..\SplatTag\SplatTagDatabase\SplatTagDatabase.csproj", "{DA0985E6-00D2-44AB-8022-8A61C25C23EE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,18 +21,18 @@ Global
 		{043D0C17-D502-43F9-9726-8236ABF712D0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{043D0C17-D502-43F9-9726-8236ABF712D0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{043D0C17-D502-43F9-9726-8236ABF712D0}.Release|Any CPU.Build.0 = Release|Any CPU
-		{5331CDF1-FB67-4011-A79B-6F7548010A05}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{5331CDF1-FB67-4011-A79B-6F7548010A05}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{5331CDF1-FB67-4011-A79B-6F7548010A05}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{5331CDF1-FB67-4011-A79B-6F7548010A05}.Release|Any CPU.Build.0 = Release|Any CPU
-		{5A803ECB-5F14-4ECC-A040-2DBBE652FA8A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{5A803ECB-5F14-4ECC-A040-2DBBE652FA8A}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{5A803ECB-5F14-4ECC-A040-2DBBE652FA8A}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{5A803ECB-5F14-4ECC-A040-2DBBE652FA8A}.Release|Any CPU.Build.0 = Release|Any CPU
 		{36A5D4BE-8115-4404-8A85-A87C76AFA08D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{36A5D4BE-8115-4404-8A85-A87C76AFA08D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{36A5D4BE-8115-4404-8A85-A87C76AFA08D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{36A5D4BE-8115-4404-8A85-A87C76AFA08D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9E40CEB9-0F46-4893-BDAF-E0358AE7015F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9E40CEB9-0F46-4893-BDAF-E0358AE7015F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9E40CEB9-0F46-4893-BDAF-E0358AE7015F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9E40CEB9-0F46-4893-BDAF-E0358AE7015F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DA0985E6-00D2-44AB-8022-8A61C25C23EE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DA0985E6-00D2-44AB-8022-8A61C25C23EE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DA0985E6-00D2-44AB-8022-8A61C25C23EE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DA0985E6-00D2-44AB-8022-8A61C25C23EE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
